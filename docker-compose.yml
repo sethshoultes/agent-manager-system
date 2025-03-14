@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  agent-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    # For development, uncomment these lines to use volumes for hot-reloading
+    # volumes:
+    #   - ./src:/app/src
+    environment:
+      - NODE_ENV=production
