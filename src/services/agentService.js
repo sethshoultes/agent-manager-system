@@ -1,20 +1,112 @@
 /**
- * Simulates agent execution with mock processing
+ * Simulates agent execution with mock processing and progress updates
  * In a real implementation, this would connect to an LLM or other AI service
+ * 
+ * @param {Object} agent - The agent to execute
+ * @param {Object} dataSource - The data source to analyze
+ * @param {Object} options - Execution options
+ * @param {Function} options.onProgress - Callback for progress updates
+ * @param {Function} options.onLog - Callback for log messages
+ * @returns {Promise<Object>} - The execution results
  */
-export const executeAgent = async (agent, dataSource) => {
+export const executeAgent = async (agent, dataSource, options = {}) => {
   if (!agent || !dataSource) {
     throw new Error('Agent and data source are required');
   }
 
+  const { onProgress, onLog } = options;
+  
   // Return a promise to simulate async processing
   return new Promise((resolve) => {
-    // Simulate processing time
-    setTimeout(() => {
-      // Generate results based on agent type
-      const results = generateMockResults(agent, dataSource);
-      resolve(results);
-    }, 2000); // Simulate 2-second processing time
+    // Define execution stages
+    const stages = [
+      { name: 'Initializing', durationMs: 500, progress: 10 },
+      { name: 'Loading data', durationMs: 800, progress: 20 },
+      { name: 'Analyzing data structure', durationMs: 700, progress: 35 },
+      { name: 'Processing data', durationMs: 1500, progress: 60 },
+      { name: 'Generating insights', durationMs: 1200, progress: 80 },
+      { name: 'Creating visualizations', durationMs: 1000, progress: 95 },
+      { name: 'Finalizing', durationMs: 300, progress: 100 }
+    ];
+
+    // Calculate estimated completion time
+    const totalDuration = stages.reduce((sum, stage) => sum + stage.durationMs, 0);
+    const startTime = new Date();
+    const estimatedCompletionTime = new Date(startTime.getTime() + totalDuration);
+
+    if (onProgress) {
+      onProgress({
+        progress: 0,
+        stage: 'Starting',
+        estimatedCompletionTime
+      });
+    }
+
+    if (onLog) {
+      onLog(`Starting execution of ${agent.name}`);
+      onLog(`Estimated completion time: ${estimatedCompletionTime.toLocaleTimeString()}`);
+    }
+
+    // Execute stages sequentially
+    let currentStageIndex = 0;
+
+    const executeStage = () => {
+      if (currentStageIndex >= stages.length) {
+        // All stages completed, generate and return results
+        const results = generateMockResults(agent, dataSource);
+        if (onLog) {
+          onLog('Execution completed successfully');
+        }
+        resolve(results);
+        return;
+      }
+
+      const currentStage = stages[currentStageIndex];
+      
+      if (onProgress) {
+        onProgress({
+          progress: currentStage.progress,
+          stage: currentStage.name
+        });
+      }
+
+      if (onLog) {
+        onLog(`Stage: ${currentStage.name}`);
+        
+        // Add specific log messages for certain stages
+        switch (currentStage.name) {
+          case 'Loading data':
+            onLog(`Processing ${dataSource.metadata?.rowCount || 0} rows of data`);
+            break;
+          case 'Analyzing data structure':
+            onLog(`Identified ${dataSource.metadata?.columnCount || 0} columns for analysis`);
+            break;
+          case 'Processing data':
+            if (agent.capabilities.includes('statistical-analysis')) {
+              onLog('Performing statistical analysis on numeric columns');
+            }
+            break;
+          case 'Generating insights':
+            onLog(`Applying ${agent.capabilities.length} capabilities to extract insights`);
+            break;
+          case 'Creating visualizations':
+            if (agent.capabilities.includes('chart-generation')) {
+              onLog('Generating appropriate charts for data visualization');
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      setTimeout(() => {
+        currentStageIndex++;
+        executeStage();
+      }, currentStage.durationMs);
+    };
+
+    // Start execution
+    executeStage();
   });
 };
 

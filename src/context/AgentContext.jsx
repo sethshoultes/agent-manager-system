@@ -19,7 +19,15 @@ const initialState = {
   agents: loadAgents(),
   selectedAgent: null,
   isLoading: false,
-  error: null
+  error: null,
+  executionProgress: {
+    agentId: null,
+    progress: 0,
+    stage: null,
+    logs: [],
+    startTime: null,
+    estimatedCompletionTime: null
+  }
 };
 
 function agentReducer(state, action) {
@@ -73,6 +81,48 @@ function agentReducer(state, action) {
       return {
         ...state,
         error: action.payload
+      };
+    case 'START_EXECUTION':
+      return {
+        ...state,
+        executionProgress: {
+          agentId: action.payload.agentId,
+          progress: 0,
+          stage: 'Starting',
+          logs: ['Execution started'],
+          startTime: new Date(),
+          estimatedCompletionTime: null
+        }
+      };
+    case 'UPDATE_EXECUTION_PROGRESS':
+      return {
+        ...state,
+        executionProgress: {
+          ...state.executionProgress,
+          ...action.payload
+        }
+      };
+    case 'ADD_EXECUTION_LOG':
+      return {
+        ...state,
+        executionProgress: {
+          ...state.executionProgress,
+          logs: [...state.executionProgress.logs, action.payload.message]
+        }
+      };
+    case 'COMPLETE_EXECUTION':
+      return {
+        ...state,
+        executionProgress: {
+          ...state.executionProgress,
+          progress: 100,
+          stage: 'Completed'
+        }
+      };
+    case 'RESET_EXECUTION':
+      return {
+        ...state,
+        executionProgress: initialState.executionProgress
       };
     default:
       return state;
@@ -142,19 +192,45 @@ export function AgentProvider({ children }) {
     }
   };
 
+  const startExecution = (agentId) => {
+    dispatch({ type: 'START_EXECUTION', payload: { agentId } });
+  };
+
+  const updateExecutionProgress = (progressData) => {
+    dispatch({ type: 'UPDATE_EXECUTION_PROGRESS', payload: progressData });
+  };
+
+  const addExecutionLog = (message) => {
+    dispatch({ type: 'ADD_EXECUTION_LOG', payload: { message } });
+  };
+
+  const completeExecution = () => {
+    dispatch({ type: 'COMPLETE_EXECUTION' });
+  };
+
+  const resetExecution = () => {
+    dispatch({ type: 'RESET_EXECUTION' });
+  };
+
   return (
     <AgentContext.Provider value={{
       agents: state.agents,
       selectedAgent: state.selectedAgent,
       isLoading: state.isLoading,
       error: state.error,
+      executionProgress: state.executionProgress,
       addAgent,
       updateAgent,
       deleteAgent,
       selectAgent,
       setAgentStatus,
       exportAgents,
-      importAgents
+      importAgents,
+      startExecution,
+      updateExecutionProgress,
+      addExecutionLog,
+      completeExecution,
+      resetExecution
     }}>
       {children}
     </AgentContext.Provider>

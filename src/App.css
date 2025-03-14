@@ -659,6 +659,47 @@ body {
   margin-right: 0.5rem;
 }
 
+/* Agent Execution */
+.execute-agent-modal {
+  width: 100%;
+}
+
+.data-source-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.data-source-option {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.data-source-option:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.data-source-option.selected {
+  border: 2px solid var(--primary-color);
+  background-color: rgba(63, 81, 181, 0.05);
+}
+
+.data-source-option h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-color);
+}
+
+.data-source-option p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-medium);
+}
+
 /* Data Tables */
 .data-table-container {
   overflow-x: auto;
