@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import { useDataContext } from '../../context/DataContext';
 import Button from '../shared/Button';
 
-const CsvUploader = () => {
+const CsvUploader = ({ onUploadComplete }) => {
   const fileInputRef = useRef();
   const { addDataSource } = useDataContext();
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +46,11 @@ const CsvUploader = () => {
         };
 
         addDataSource(dataSource);
+        
+        // Notify parent component that upload is complete
+        if (onUploadComplete) {
+          onUploadComplete(dataSource);
+        }
       },
       error: (err) => {
         setIsLoading(false);

@@ -21,3 +21,10 @@
 - Added time tracking (elapsed and estimated completion time)
 - Enhanced agent status management
 - Improved execution modal with live updates
+
+## v0.3.1 - 2025-03-14
+- Fixed missing routes for /agents/new and /data/upload
+- Created NewAgentPage for adding new agents
+- Created DataUploadPage for dedicated data upload UI
+- Updated CsvUploader component to support callback on completion
+- Enhanced router configuration to support all sidebar navigation links
