@@ -55,13 +55,20 @@ const AgentForm = ({ onSubmit, initialValues }) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Create the final agent data
+    const agentData = initialValues?.id 
+      ? { ...formData, id: initialValues.id } 
+      : formData;
+
+    // Update or add the agent
     if (initialValues?.id) {
-      updateAgent({ ...formData, id: initialValues.id });
+      updateAgent(agentData);
     } else {
-      addAgent(formData);
+      addAgent(agentData);
     }
 
-    if (onSubmit) onSubmit();
+    // Call the callback with the agent data
+    if (onSubmit) onSubmit(agentData);
   };
 
   return (

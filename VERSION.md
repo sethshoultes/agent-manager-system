@@ -28,3 +28,10 @@
 - Created DataUploadPage for dedicated data upload UI
 - Updated CsvUploader component to support callback on completion
 - Enhanced router configuration to support all sidebar navigation links
+
+## v0.3.2 - 2025-03-14
+- Fixed TypeError in AgentCard when capabilities is undefined
+- Added null check for agent.capabilities before mapping
+- Enhanced AgentForm to properly pass agent data to callback
+- Improved error handling for agent-related operations
+- Added defensive coding to prevent undefined mapping errors

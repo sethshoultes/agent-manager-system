@@ -56,11 +56,13 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
           <span className="agent-status">{agent.status}</span>
         </div>
         <div className="agent-capabilities">
-          {agent.capabilities.map(capability => (
-            <span key={capability} className="capability-tag">
-              {capability}
-            </span>
-          ))}
+          {agent.capabilities && agent.capabilities.length > 0 && 
+            agent.capabilities.map(capability => (
+              <span key={capability} className="capability-tag">
+                {capability}
+              </span>
+            ))
+          }
         </div>
         <div className="agent-timestamp">
           <small>Created: {new Date(agent.createdAt).toLocaleString()}</small>
