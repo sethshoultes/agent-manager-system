@@ -102,6 +102,7 @@
         <div class="controls">
             <button id="generateBtn">Generate Sample Data</button>
             <button id="clearBtn">Clear Results</button>
+            <button id="startServerBtn" style="background-color: #3498db;">Start Server</button>
         </div>
     </div>
     
@@ -114,6 +115,21 @@
             <li>Debug information will be shown in the console and in the debug section</li>
         </ol>
         <p class="info">This is a standalone test that doesn't require a server - you can simply open this HTML file directly in your browser.</p>
+    </div>
+    
+    <div class="card" id="serverCard">
+        <h2>Server Controls</h2>
+        <p>Use these controls to manage the Agent Manager System server:</p>
+        <div class="server-controls">
+            <button id="startFullBtn" style="background-color: #3498db;">Start Full System</button>
+            <button id="startApiBtn" style="background-color: #9b59b6;">Start API Only</button>
+            <button id="startFrontendBtn" style="background-color: #f39c12;">Start Frontend Only</button>
+            <button id="stopServerBtn" style="background-color: #e74c3c;">Stop Server</button>
+        </div>
+        <div id="serverStatus" style="margin-top: 15px;">
+            <p>Server Status: <span id="statusIndicator">Not running</span></p>
+            <pre id="serverOutput" style="max-height: 200px; overflow-y: auto;"></pre>
+        </div>
     </div>
     
     <div class="card">
@@ -324,6 +340,81 @@
         
         // Initial message
         log('Sample data generator test ready - click the "Generate Sample Data" button to begin');
+        
+        // Server control functionality
+        let serverProcess = null;
+        const statusIndicator = document.getElementById('statusIndicator');
+        const serverOutput = document.getElementById('serverOutput');
+        
+        // Helper function to update server status
+        function updateServerStatus(status, output = '') {
+            statusIndicator.textContent = status;
+            
+            if (status === 'Running') {
+                statusIndicator.style.color = '#27ae60';
+            } else if (status === 'Not running') {
+                statusIndicator.style.color = '#e74c3c';
+            } else {
+                statusIndicator.style.color = '#f39c12';
+            }
+            
+            if (output) {
+                serverOutput.textContent += output + '\n';
+                serverOutput.scrollTop = serverOutput.scrollHeight;
+            }
+        }
+        
+        // Helper function to run a command
+        function runCommand(command) {
+            // Clear output
+            serverOutput.textContent = '';
+            
+            // Create a message that shows the command
+            updateServerStatus('Starting...', `$ ${command}`);
+            
+            // Launch terminal and execute command
+            const projectPath = '/Users/sethshoultes/Dropbox/Docs/SWS Management Services/WPBuildr/agent-manager-system';
+            window.location.href = `file://${projectPath}/start.sh`;
+            
+            // This is a static HTML file, so we can't actually spawn a process
+            // Instead, we'll show instructions
+            setTimeout(() => {
+                updateServerStatus('Instructions', 
+                    `Since this is a static HTML file, we can't directly execute commands.\n\n` +
+                    `To start the server, open Terminal and run these commands:\n\n` +
+                    `cd "${projectPath}"\n` +
+                    `${command}\n\n` +
+                    `The server should then be available at:\n` + 
+                    `- Frontend: http://localhost:3000\n` +
+                    `- API: http://localhost:3001`
+                );
+            }, 500);
+        }
+        
+        // Start server button
+        document.getElementById('startServerBtn').addEventListener('click', function() {
+            runCommand('./start.sh');
+        });
+        
+        // Start full system button
+        document.getElementById('startFullBtn').addEventListener('click', function() {
+            runCommand('./start.sh');
+        });
+        
+        // Start API only button
+        document.getElementById('startApiBtn').addEventListener('click', function() {
+            runCommand('./start.sh -a');
+        });
+        
+        // Start frontend only button
+        document.getElementById('startFrontendBtn').addEventListener('click', function() {
+            runCommand('./start.sh -f');
+        });
+        
+        // Stop server button
+        document.getElementById('stopServerBtn').addEventListener('click', function() {
+            runCommand('./ams stop');
+        });
     </script>
 </body>
 </html>

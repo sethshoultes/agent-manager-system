@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import useInitialize from './hooks/useInitialize';
 import DebugReports from '../debug-reports';
+import DebugAgentPage from './pages/DebugAgentPage';
 import './App.css';
 
 // System admin and testing component
@@ -107,6 +108,7 @@ const HomePage = () => {
         <Link to="/agents" style={linkButtonStyle}>Agents</Link>
         <Link to="/data" style={linkButtonStyle}>Data</Link>
         <Link to="/reports" style={linkButtonStyle}>Reports</Link>
+        <Link to="/debug-agent" style={{...linkButtonStyle, background: '#4CAF50'}}>Debug Agent</Link>
         <Link to="/debug-reports" style={{...linkButtonStyle, background: '#e74c3c'}}>Debug Reports</Link>
       </div>
       
@@ -207,6 +209,7 @@ function AppContent() {
         
         {/* Debug routes */}
         <Route path="/debug-reports" element={<DebugReports />} />
+        <Route path="/debug-agent" element={<DebugAgentPage />} />
         <Route path="/test-menu" element={<HomePage />} />
         
         {/* Redirect all other routes to homepage */}

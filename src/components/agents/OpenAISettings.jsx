@@ -179,7 +179,7 @@ const OpenAISettings = ({
       <div className="openai-settings-header" onClick={() => setIsExpanded(!isExpanded)}>
         <h3>
           <span className="ai-icon">🤖</span> 
-          AI Settings
+          AI Settings (Required for full analysis)
           <span className="toggle-icon">{isExpanded ? '▼' : '►'}</span>
         </h3>
       </div>

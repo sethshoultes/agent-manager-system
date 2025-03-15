@@ -11,13 +11,47 @@ import useReportStore from '../stores/reportStore';
 import useAgentStore from '../stores/agentStore';
 import { useNavigate } from 'react-router-dom';
 import OpenAISettings from '../components/agents/OpenAISettings';
+import { createSampleDataset } from '../utils/dataUtils';
 
 const AgentsPage = () => {
   const dataStore = useDataStore();
   const reportStore = useReportStore();
   const agentStore = useAgentStore();
   
-  const { dataSources } = dataStore;
+  // Initialize data sources on component mount
+  useEffect(() => {
+    console.log("AgentsPage useEffect - Fetching data sources");
+    const initializeDataSources = async () => {
+      try {
+        // Create sample data if no data exists
+        if (window.localStorage) {
+          const existingData = window.localStorage.getItem('dataSources');
+          if (!existingData || JSON.parse(existingData).length === 0) {
+            console.log("No data sources found in localStorage, creating sample data");
+            const sampleDataset = createSampleDataset();
+            
+            // Force save the sample dataset directly to localStorage
+            const sampleDataArray = [sampleDataset];
+            window.localStorage.setItem('dataSources', JSON.stringify(sampleDataArray));
+            console.log("Sample data saved directly to localStorage");
+          }
+        }
+        
+        // Now fetch the data sources (which should include our sample)
+        await dataStore.fetchDataSources();
+        console.log("Data sources fetched:", dataStore.dataSources);
+      } catch (error) {
+        console.error("Failed to initialize data sources:", error);
+      }
+    };
+    
+    initializeDataSources();
+  }, []);
+  
+  // Get data sources directly from the store for better reactivity
+  const dataSources = dataStore.dataSources || [];
+  console.log("AgentsPage render - Data sources:", { count: dataSources.length, sources: dataSources });
+  
   const { addReport } = reportStore;
   const { 
     updateAgent, 
@@ -55,31 +89,42 @@ const AgentsPage = () => {
     };
   }, [isExecuting]);
 
-  const handleExecuteAgent = (agent, options = {}) => {
-    // If options are provided, skip the modal and execute directly
-    if (options && (options.useOpenAI !== undefined)) {
+  const handleExecuteAgent = (agent, dataSource, options = {}) => {
+    console.log('Executing agent with data source:', { agent, dataSource, options });
+    
+    // Validate both agent and data source
+    if (!agent) {
+      setError('No agent provided for execution');
+      return;
+    }
+    
+    // If we have both agent and data source, execute directly
+    if (agent && dataSource) {
       setSelectedAgent(agent);
-      
-      // Get the first data source
-      if (dataSources && dataSources.length > 0) {
-        const dataSource = dataSources[0];
-        setSelectedDataSource(dataSource);
-        
-        // Execute with the provided options
-        executeAgentWithOptions(agent, dataSource, options);
-      } else {
-        setError('No data sources available. Please create a data source first.');
-        setShowExecuteModal(true);
-      }
+      setSelectedDataSource(dataSource);
+      executeAgentWithOptions(agent, dataSource, options);
     } else {
-      // Show the modal for data source selection
-      setSelectedAgent(agent);
-      setShowExecuteModal(true);
+      // This should almost never happen since we now select the data source in the modal
+      setError('Data source is required for execution');
     }
   };
 
   const handleSelectDataSource = (dataSource) => {
+    console.log('Data source selected:', dataSource);
+    // Set selected data source in the component state
     setSelectedDataSource(dataSource);
+    
+    // Force highlight the selected data source in the modal
+    const elements = document.querySelectorAll('.data-source-item');
+    elements.forEach(el => {
+      if (el.dataset.id === dataSource.id) {
+        el.style.background = '#e6f7ff';
+        el.style.fontWeight = 'bold';
+      } else {
+        el.style.background = 'white';
+        el.style.fontWeight = 'normal';
+      }
+    });
   };
 
   // Execute agent with OpenAI options
@@ -162,43 +207,68 @@ const AgentsPage = () => {
         ]
       }));
       
-      // Generate report from results
-      const report = generateReport(results, agent, dataSource);
-      console.log('Generated report:', report);
-      
-      // Save report
-      addReport(report)
-        .then(savedReport => {
-          console.log('Report saved successfully:', savedReport);
-          
-          // Update agent status to completed
-          const completedAgent = {
-            ...agent,
-            status: 'completed',
-            lastRun: new Date().toISOString()
-          };
-          
-          // Update in store and localStorage
-          updateAgent(completedAgent);
-          updateAgentInLocalStorage(completedAgent);
-          
-          // Reset UI state
-          setShowExecuteModal(false);
-          setSelectedAgent(null);
-          setSelectedDataSource(null);
-          setIsExecuting(false);
-          
-          // Navigate to reports page
-          navigate('/reports');
-        })
-        .catch(error => {
-          console.error('Failed to save report:', error);
-          setError('Failed to save report: ' + (error.message || 'Unknown error'));
-          setIsExecuting(false);
-          
-          // Update agent status to error
-          handleExecutionError(agent, error);
-        });
+      // Check if a report is already included in the results
+      if (results.reportId) {
+        console.log('Report already created during execution:', results.reportId);
+        
+        // Just update the agent status to completed
+        const completedAgent = {
+          ...agent,
+          status: 'completed',
+          lastRun: new Date().toISOString()
+        };
+        
+        // Update in store and localStorage
+        updateAgent(completedAgent);
+        updateAgentInLocalStorage(completedAgent);
+        
+        // Reset UI state
+        setShowExecuteModal(false);
+        setSelectedAgent(null);
+        setSelectedDataSource(null);
+        setIsExecuting(false);
+        
+        // Navigate to reports page
+        navigate('/reports');
+      } else {
+        // Generate report from results
+        const report = generateReport(results, agent, dataSource);
+        console.log('Generated report:', report);
+        
+        // Save report
+        addReport(report)
+          .then(savedReport => {
+            console.log('Report saved successfully:', savedReport);
+            
+            // Update agent status to completed
+            const completedAgent = {
+              ...agent,
+              status: 'completed',
+              lastRun: new Date().toISOString()
+            };
+            
+            // Update in store and localStorage
+            updateAgent(completedAgent);
+            updateAgentInLocalStorage(completedAgent);
+            
+            // Reset UI state
+            setShowExecuteModal(false);
+            setSelectedAgent(null);
+            setSelectedDataSource(null);
+            setIsExecuting(false);
+            
+            // Navigate to reports page
+            navigate('/reports');
+          })
+          .catch(error => {
+            console.error('Failed to save report:', error);
+            setError('Failed to save report: ' + (error.message || 'Unknown error'));
+            setIsExecuting(false);
+            
+            // Update agent status to error
+            handleExecutionError(agent, error);
+          });
+      }
       
     } catch (error) {
       console.error('Execution error:', error);
@@ -243,13 +313,31 @@ const AgentsPage = () => {
   
   // Handler for the Run Execution button in the modal
   const handleRunExecution = async () => {
-    if (!selectedAgent || !selectedDataSource) {
-      setError('Please select a data source');
+    if (!selectedAgent) {
+      setError('No agent selected. Please select an agent first.');
       return;
     }
     
-    // Execute with default options
-    executeAgentWithOptions(selectedAgent, selectedDataSource, { useOpenAI: false });
+    if (!selectedDataSource) {
+      setError('Please select a data source to analyze');
+      return;
+    }
+    
+    // Check if data source has data
+    if (!selectedDataSource.data) {
+      setError('The selected data source does not contain any data to analyze.');
+      return;
+    }
+    
+    console.log('Running execution with:', {
+      agent: selectedAgent.name,
+      dataSource: selectedDataSource.name,
+      dataSourceData: selectedDataSource.data ? `Has data (${Array.isArray(selectedDataSource.data) ? selectedDataSource.data.length : 'object'} entries)` : 'No data'
+    });
+    
+    // Execute with default options but don't force useOpenAI: false
+    // This will allow the system to use OpenAI if an API key is provided
+    executeAgentWithOptions(selectedAgent, selectedDataSource, {});
   };
 
   const handleExportAgents = () => {
@@ -312,40 +400,18 @@ const AgentsPage = () => {
           <div className="header-actions">
             <button 
               onClick={() => {
-                // Create a sample data source
-                const sampleData = [];
+                // Import the createSampleDataset function
+                const sampleDataset = createSampleDataset();
                 
-                // Generate sample data
-                for (let i = 0; i < 20; i++) {
-                  sampleData.push({
-                    id: i + 1,
-                    name: `Product ${i + 1}`,
-                    category: ['Electronics', 'Clothing', 'Home', 'Books'][Math.floor(Math.random() * 4)],
-                    price: Math.floor(Math.random() * 100) + 10,
-                    quantity: Math.floor(Math.random() * 50) + 1
+                // Add the sample dataset to the data store
+                dataStore.addDataSource(sampleDataset)
+                  .then(() => {
+                    alert('Sample data source created! The new data source is now available.');
+                  })
+                  .catch(error => {
+                    console.error('Error adding sample data:', error);
+                    alert('Error creating sample data source: ' + error.message);
                   });
-                }
-                
-                // Create a data source object
-                const dataSource = {
-                  id: `sample-data-${Date.now()}`,
-                  name: 'Sample Data',
-                  description: 'Sample data for testing',
-                  data: sampleData,
-                  columns: ['id', 'name', 'category', 'price', 'quantity'],
-                  metadata: {
-                    rowCount: sampleData.length,
-                    columnCount: 5
-                  }
-                };
-                
-                // Store in localStorage
-                const existingDataSources = JSON.parse(localStorage.getItem('dataSources') || '[]');
-                localStorage.setItem('dataSources', JSON.stringify([...existingDataSources, dataSource]));
-                
-                // Refresh the page
-                alert('Sample data source created! Refreshing page...');
-                window.location.reload();
               }}
               style={{
                 marginRight: '10px',
@@ -440,8 +506,16 @@ const AgentsPage = () => {
                 <p>Selected Agent: <strong>{selectedAgent?.name}</strong></p>
                 
                 <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>Select Data Source</label>
-                  <div style={{ border: '1px solid #ddd', borderRadius: '4px', maxHeight: '300px', overflowY: 'auto' }}>
+                  <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px', fontSize: '16px' }}>
+                    <span style={{ color: 'red' }}>*</span> Select Data Source (Required)
+                  </label>
+                  <div style={{ 
+                    border: '2px solid #40a9ff', 
+                    borderRadius: '4px', 
+                    maxHeight: '300px', 
+                    overflowY: 'auto',
+                    boxShadow: '0 0 10px rgba(24, 144, 255, 0.2)'
+                  }}>
                     {dataSources.length === 0 ? (
                       <div style={{ padding: '20px', textAlign: 'center', background: '#f5f5f5' }}>
                         <p>No data sources available. Please upload a CSV file first.</p>
@@ -450,11 +524,16 @@ const AgentsPage = () => {
                       dataSources.filter(ds => ds && typeof ds === 'object' && ds.id).map(ds => (
                         <div 
                           key={ds.id}
+                          className="data-source-item"
+                          data-id={ds.id}
                           style={{ 
                             padding: '15px', 
                             borderBottom: '1px solid #eee',
                             background: selectedDataSource?.id === ds.id ? '#e6f7ff' : 'white',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            border: selectedDataSource?.id === ds.id ? '2px solid #1890ff' : '1px solid transparent',
+                            borderRadius: '4px',
+                            fontWeight: selectedDataSource?.id === ds.id ? 'bold' : 'normal'
                           }}
                           onClick={() => handleSelectDataSource(ds)}
                         >
@@ -462,6 +541,11 @@ const AgentsPage = () => {
                           <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
                             {ds.type || 'Unknown'} - {ds.metadata?.rowCount || 0} rows, {ds.metadata?.columnCount || 0} columns
                           </p>
+                          {selectedDataSource?.id === ds.id && (
+                            <div style={{ color: '#1890ff', marginTop: '5px', fontSize: '14px' }}>
+                              ✓ Selected for analysis
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -477,17 +561,20 @@ const AgentsPage = () => {
                 <div className="form-actions" style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                   <button
                     style={{
-                      padding: '8px 16px',
-                      background: selectedDataSource ? '#4a69bd' : '#ccc',
+                      padding: '12px 24px',
+                      background: selectedDataSource ? '#4CAF50' : '#ccc',
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
-                      cursor: selectedDataSource ? 'pointer' : 'not-allowed'
+                      cursor: selectedDataSource ? 'pointer' : 'not-allowed',
+                      fontWeight: 'bold',
+                      fontSize: '16px',
+                      boxShadow: selectedDataSource ? '0 4px 8px rgba(0,0,0,0.1)' : 'none'
                     }}
                     onClick={selectedDataSource ? handleRunExecution : undefined}
                     disabled={!selectedDataSource}
                   >
-                    Execute Agent
+                    Execute Agent with Selected Data
                   </button>
                   <button
                     style={{

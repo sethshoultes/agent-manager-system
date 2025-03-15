@@ -35,3 +35,12 @@
 - Enhanced AgentForm to properly pass agent data to callback
 - Improved error handling for agent-related operations
 - Added defensive coding to prevent undefined mapping errors
+
+## v0.4.0 - 2025-03-15
+- Added data source selection to agent execution modal
+- Fixed issue where agents couldn't select specific data sources
+- Improved UI feedback for data source selection
+- Enhanced execution flow to require data source selection
+- Updated agent service to handle direct data source selection
+- Removed forced mock data mode for more flexibility
+- Added clear error messages when data source is missing

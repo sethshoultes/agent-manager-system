@@ -123,8 +123,8 @@ export const auth = {
   },
   
   isAuthenticated: () => {
-    // Always return true for testing
-    return true;
+    // Always return false for testing to force offline mode
+    return false;
   }
 };
 

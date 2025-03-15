@@ -129,7 +129,8 @@ const useReportStore = create((set, get) => ({
     const reports = get().reports || [];
     return Array.isArray(reports)
       ? reports.filter(report => 
-          report && report.dataSourceIds && report.dataSourceIds.includes(dataSourceId)
+          report && (report.dataSourceId === dataSourceId || 
+                     (report.dataSourceIds && report.dataSourceIds.includes(dataSourceId)))
         )
       : [];
   },

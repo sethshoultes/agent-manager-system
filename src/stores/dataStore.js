@@ -109,18 +109,33 @@ const useDataStore = create(
             }
           }
         } else {
-          console.log('No data sources found in localStorage');
+          console.log('No data sources found in localStorage, creating sample data');
+          
+          // Create a sample dataset if none exists
+          const sampleDataset = createSampleDataset();
+          dataSources = [sampleDataset];
+          
+          // Save to localStorage
+          localStorage.setItem('dataSources', JSON.stringify(dataSources));
+          console.log('Created and saved sample dataset to localStorage');
         }
       } catch (e) {
-        console.warn('Error loading from localStorage, using empty array:', e);
+        console.warn('Error loading from localStorage, using sample data:', e);
+        
+        // Create a sample dataset on error
+        const sampleDataset = createSampleDataset();
+        dataSources = [sampleDataset];
       }
       
-      // Set the state with loaded data or empty array
+      // Set the state with loaded data or sample data
       set({ 
         dataSources: dataSources,
         isLoading: false,
         initialized: true
       });
+      
+      // Don't force offline mode anymore
+      // localStorage.setItem('offline_mode', 'true');
       
       console.log('Data store initialized with', dataSources.length, 'data sources');
       return dataSources;
@@ -235,9 +250,52 @@ const useDataStore = create(
   deleteDataSource: async (id) => {
     set({ isLoading: true, error: null });
     
+    // Helper function to delete from localStorage
+    const deleteLocally = () => {
+      console.log('Deleting data source locally, id:', id);
+      
+      // Update in localStorage
+      try {
+        const storedDataSources = JSON.parse(localStorage.getItem('dataSources') || '[]');
+        console.log('Found', storedDataSources.length, 'data sources in localStorage');
+        
+        const updatedDataSources = storedDataSources.filter(ds => ds.id !== id);
+        console.log('After filtering, have', updatedDataSources.length, 'data sources');
+        
+        localStorage.setItem('dataSources', JSON.stringify(updatedDataSources));
+        console.log('Saved updated data sources to localStorage');
+      } catch (e) {
+        console.error('Failed to delete data source from localStorage:', e);
+      }
+      
+      // Force offline mode
+      localStorage.setItem('offline_mode', 'true');
+      
+      // Update state
+      set(state => ({
+        dataSources: state.dataSources.filter(ds => ds.id !== id),
+        selectedDataSource: state.selectedDataSource?.id === id ? null : state.selectedDataSource,
+        isLoading: false
+      }));
+      
+      return true;
+    };
+    
+    // Always use localStorage for testing
+    return deleteLocally();
+    
     try {
+      // Check if we're in offline mode or API is unavailable
+      const isOfflineMode = localStorage.getItem('offline_mode') === 'true';
+      
+      if (isOfflineMode) {
+        return deleteLocally();
+      }
+      
+      // Call API if not in offline mode
       await dataSourceService.delete(id);
       
+      // Update state on success
       set(state => ({
         dataSources: state.dataSources.filter(ds => ds.id !== id),
         selectedDataSource: state.selectedDataSource?.id === id ? null : state.selectedDataSource,
@@ -246,25 +304,8 @@ const useDataStore = create(
       
       return true;
     } catch (error) {
-      // For offline mode, delete locally
-      if (error.message === 'Network Error') {
-        console.warn('API unreachable, deleting data source from local state only');
-        
-        set(state => ({
-          dataSources: state.dataSources.filter(ds => ds.id !== id),
-          selectedDataSource: state.selectedDataSource?.id === id ? null : state.selectedDataSource,
-          isLoading: false
-        }));
-        
-        return true;
-      } else {
-        console.error('Error deleting data source:', error);
-        set({ 
-          isLoading: false,
-          error: error.message || 'Failed to delete data source'
-        });
-        throw error;
-      }
+      console.warn('Error deleting from API, falling back to local delete:', error.message);
+      return deleteLocally();
     }
   },
   

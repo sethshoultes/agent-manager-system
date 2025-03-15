@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
+import openaiService from '../services/openaiService';
+import openRouterService from '../services/openRouterService';
 import './SettingsPage.css';
 
 const SettingsPage = () => {
@@ -13,6 +15,10 @@ const SettingsPage = () => {
     openrouter: 'anthropic/claude-3-haiku'
   });
   const [saveStatus, setSaveStatus] = useState({ message: '', type: '' });
+  const [verifyingOpenAI, setVerifyingOpenAI] = useState(false);
+  const [verifyingOpenRouter, setVerifyingOpenRouter] = useState(false);
+  const [openAIStatus, setOpenAIStatus] = useState({ verified: false, message: '' });
+  const [openRouterStatus, setOpenRouterStatus] = useState({ verified: false, message: '' });
   
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -113,6 +119,142 @@ const SettingsPage = () => {
     }
   };
   
+  // Verify OpenAI API key
+  const verifyOpenAIKey = async () => {
+    if (!openAIKey) {
+      setOpenAIStatus({
+        verified: false,
+        message: 'Please enter an API key first'
+      });
+      return;
+    }
+    
+    setVerifyingOpenAI(true);
+    setOpenAIStatus({ verified: false, message: 'Verifying...' });
+    
+    try {
+      // Set the API key
+      const success = openaiService.setApiKey(openAIKey);
+      
+      if (!success) {
+        setOpenAIStatus({
+          verified: false,
+          message: 'Invalid API key format'
+        });
+        setVerifyingOpenAI(false);
+        return;
+      }
+      
+      // Make a simple API call to verify the key
+      const response = await fetch('https://api.openai.com/v1/models', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${openAIKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.data && Array.isArray(data.data)) {
+          setOpenAIStatus({
+            verified: true,
+            message: `Verified! Access to ${data.data.length} models`
+          });
+        } else {
+          setOpenAIStatus({
+            verified: true,
+            message: 'API key verified successfully'
+          });
+        }
+      } else {
+        const errorData = await response.json();
+        setOpenAIStatus({
+          verified: false,
+          message: errorData.error?.message || `Error: ${response.status}`
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying OpenAI key:', error);
+      setOpenAIStatus({
+        verified: false,
+        message: error.message || 'Error connecting to OpenAI'
+      });
+    } finally {
+      setVerifyingOpenAI(false);
+    }
+  };
+  
+  // Verify OpenRouter API key
+  const verifyOpenRouterKey = async () => {
+    if (!openRouterKey) {
+      setOpenRouterStatus({
+        verified: false,
+        message: 'Please enter an API key first'
+      });
+      return;
+    }
+    
+    setVerifyingOpenRouter(true);
+    setOpenRouterStatus({ verified: false, message: 'Verifying...' });
+    
+    try {
+      // Set the API key
+      const success = openRouterService.setApiKey(openRouterKey);
+      
+      if (!success) {
+        setOpenRouterStatus({
+          verified: false,
+          message: 'Invalid API key format'
+        });
+        setVerifyingOpenRouter(false);
+        return;
+      }
+      
+      // Make a simple API call to verify the key
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${openRouterKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'Agent Manager System'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.data && Array.isArray(data.data)) {
+          setOpenRouterStatus({
+            verified: true,
+            message: `Verified! Access to ${data.data.length} models`
+          });
+        } else {
+          setOpenRouterStatus({
+            verified: true,
+            message: 'API key verified successfully'
+          });
+        }
+      } else {
+        const errorData = await response.json();
+        setOpenRouterStatus({
+          verified: false,
+          message: errorData.error?.message || `Error: ${response.status}`
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying OpenRouter key:', error);
+      setOpenRouterStatus({
+        verified: false,
+        message: error.message || 'Error connecting to OpenRouter'
+      });
+    } finally {
+      setVerifyingOpenRouter(false);
+    }
+  };
+  
   return (
     <Layout>
       <div className="settings-page">
@@ -152,15 +294,31 @@ const SettingsPage = () => {
             <h3>OpenAI Settings</h3>
             <div className="settings-field">
               <label htmlFor="openai-key">API Key</label>
-              <input
-                id="openai-key"
-                type="password"
-                value={openAIKey}
-                onChange={handleOpenAIKeyChange}
-                placeholder="Enter your OpenAI API key"
-                className="api-key-input"
-                autoComplete="off"
-              />
+              <div className="api-key-row">
+                <input
+                  id="openai-key"
+                  type="password"
+                  value={openAIKey}
+                  onChange={handleOpenAIKeyChange}
+                  placeholder="Enter your OpenAI API key"
+                  className="api-key-input"
+                  autoComplete="off"
+                />
+                <Button 
+                  onClick={verifyOpenAIKey} 
+                  disabled={verifyingOpenAI || !openAIKey}
+                  variant={openAIStatus.verified ? "success" : "secondary"}
+                >
+                  {verifyingOpenAI ? 'Verifying...' : 'Verify Key'}
+                </Button>
+              </div>
+              
+              {openAIStatus.message && (
+                <div className={`key-status ${openAIStatus.verified ? 'status-success' : 'status-error'}`}>
+                  {openAIStatus.message}
+                </div>
+              )}
+              
               <p className="help-text">
                 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
                   Get an OpenAI API key
@@ -186,15 +344,31 @@ const SettingsPage = () => {
             <h3>OpenRouter Settings</h3>
             <div className="settings-field">
               <label htmlFor="openrouter-key">API Key</label>
-              <input
-                id="openrouter-key"
-                type="password"
-                value={openRouterKey}
-                onChange={handleOpenRouterKeyChange}
-                placeholder="Enter your OpenRouter API key"
-                className="api-key-input"
-                autoComplete="off"
-              />
+              <div className="api-key-row">
+                <input
+                  id="openrouter-key"
+                  type="password"
+                  value={openRouterKey}
+                  onChange={handleOpenRouterKeyChange}
+                  placeholder="Enter your OpenRouter API key"
+                  className="api-key-input"
+                  autoComplete="off"
+                />
+                <Button 
+                  onClick={verifyOpenRouterKey} 
+                  disabled={verifyingOpenRouter || !openRouterKey}
+                  variant={openRouterStatus.verified ? "success" : "secondary"}
+                >
+                  {verifyingOpenRouter ? 'Verifying...' : 'Verify Key'}
+                </Button>
+              </div>
+              
+              {openRouterStatus.message && (
+                <div className={`key-status ${openRouterStatus.verified ? 'status-success' : 'status-error'}`}>
+                  {openRouterStatus.message}
+                </div>
+              )}
+              
               <p className="help-text">
                 <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
                   Get an OpenRouter API key

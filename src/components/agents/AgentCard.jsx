@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '../shared/Card';
 import Button from '../shared/Button';
 import OpenAISettings from './OpenAISettings';
 import Modal from '../shared/Modal';
+import useDataStore from '../../stores/dataStore';
 
 const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
+  // Get data sources from the store
+  const dataStore = useDataStore();
+  const dataSources = dataStore.dataSources || [];
+  
+  // Initialize data sources on component mount
+  useEffect(() => {
+    dataStore.fetchDataSources();
+  }, []);
+  
+  // Component state
   const [showModal, setShowModal] = useState(false);
+  const [selectedDataSource, setSelectedDataSource] = useState(null);
   const [openAISettings, setOpenAISettings] = useState({
     apiKey: '',
     model: 'gpt-4-turbo',
@@ -34,8 +46,13 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
   };
   
   const handleExecuteWithAPI = () => {
+    if (!selectedDataSource) {
+      alert('Please select a data source first');
+      return;
+    }
+    
     setShowModal(false);
-    onExecute(agent, { 
+    onExecute(agent, selectedDataSource, { 
       useOpenAI: true,
       openAIKey: openAISettings.apiKey,
       model: openAISettings.model,
@@ -44,8 +61,13 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
   };
   
   const handleExecuteWithoutAPI = () => {
+    if (!selectedDataSource) {
+      alert('Please select a data source first');
+      return;
+    }
+    
     setShowModal(false);
-    onExecute(agent, { useOpenAI: false });
+    onExecute(agent, selectedDataSource, { useOpenAI: false });
   };
 
   return (
@@ -117,25 +139,72 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
         title="Execute Agent"
       >
         <div className="execute-options">
-          <h4>Execution Method</h4>
+          <h4>1. Select Data Source</h4>
+          <div style={{ 
+            border: '1px solid #ddd', 
+            borderRadius: '4px', 
+            maxHeight: '150px', 
+            overflowY: 'auto',
+            marginBottom: '20px' 
+          }}>
+            {dataSources.length === 0 ? (
+              <div style={{ padding: '15px', textAlign: 'center' }}>
+                <p>No data sources available. Please add a data source first.</p>
+              </div>
+            ) : (
+              dataSources.map(ds => (
+                <div 
+                  key={ds.id}
+                  style={{ 
+                    padding: '10px', 
+                    borderBottom: '1px solid #eee',
+                    background: selectedDataSource?.id === ds.id ? '#e6f7ff' : 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between'
+                  }}
+                  onClick={() => setSelectedDataSource(ds)}
+                >
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>{ds.name}</div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {ds.metadata?.rowCount || 0} rows, {ds.metadata?.columnCount || 0} columns
+                    </div>
+                  </div>
+                  {selectedDataSource?.id === ds.id && (
+                    <div style={{ color: '#1890ff', alignSelf: 'center' }}>✓</div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+          
+          <h4>2. Execution Method</h4>
           <p>Choose how you want to execute this agent:</p>
           
           <OpenAISettings
             onSettingsChange={handleOpenAISettingsChange}
           />
           
-          <div className="execute-actions">
+          <div className="execute-actions" style={{ marginTop: '20px' }}>
             <Button 
               onClick={handleExecuteWithAPI}
-              disabled={!openAISettings.apiKey}
+              disabled={!openAISettings.apiKey || !selectedDataSource}
+              style={{
+                opacity: (!openAISettings.apiKey || !selectedDataSource) ? 0.5 : 1
+              }}
             >
               Execute with OpenAI
             </Button>
             <Button 
               variant="secondary"
               onClick={handleExecuteWithoutAPI}
+              disabled={!selectedDataSource}
+              style={{
+                opacity: !selectedDataSource ? 0.5 : 1
+              }}
             >
-              Execute with Mock Data
+              Execute with Data Analysis
             </Button>
             <Button 
               variant="tertiary"
@@ -145,7 +214,13 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
             </Button>
           </div>
           
-          {!openAISettings.apiKey && (
+          {!selectedDataSource && (
+            <div style={{ marginTop: '10px', padding: '10px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: '4px' }}>
+              <p style={{ margin: 0 }}><strong>Required:</strong> Please select a data source to analyze.</p>
+            </div>
+          )}
+          
+          {!openAISettings.apiKey && selectedDataSource && (
             <div className="openai-notice">
               <p><strong>Note:</strong> An OpenAI API key is required to use AI-powered analysis.</p>
             </div>

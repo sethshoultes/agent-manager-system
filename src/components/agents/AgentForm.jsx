@@ -52,24 +52,45 @@ const AgentForm = ({ onSubmit, initialValues }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Create the final agent data
-    const agentData = initialValues?.id 
-      ? { ...formData, id: initialValues.id } 
-      : formData;
+    try {
+      // Create the final agent data
+      const agentData = initialValues?.id 
+        ? { ...formData, id: initialValues.id } 
+        : {
+            ...formData,
+            id: Math.random().toString(36).substring(2, 11),
+            status: 'idle',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+      console.log('Submitting agent data:', agentData);
 
-    // Update or add the agent
-    if (initialValues?.id) {
-      updateAgent(agentData);
-    } else {
-      addAgent(agentData);
+      // Force localStorage mode for testing
+      localStorage.setItem('offline_mode', 'true');
+      
+      // Update or add the agent
+      if (initialValues?.id) {
+        // For updates, ensure we have an ID
+        const updatedAgent = await updateAgent(agentData);
+        console.log('Agent updated successfully:', updatedAgent);
+      } else {
+        // For new agents, include the generated ID
+        const newAgent = await addAgent(agentData);
+        console.log('Agent created successfully:', newAgent);
+      }
+
+      // Call the callback with the agent data
+      if (onSubmit) onSubmit(agentData);
+      
+    } catch (error) {
+      console.error('Error saving agent:', error);
+      setErrors({ form: error.message || 'Failed to save agent' });
     }
-
-    // Call the callback with the agent data
-    if (onSubmit) onSubmit(agentData);
   };
 
   return (

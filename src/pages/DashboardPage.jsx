@@ -298,7 +298,24 @@ const DashboardPage = () => {
                   ))
                 ) : (
                   <div className="empty-state">
-                    <p>No data sources available. Please upload a data source first.</p>
+                    <p>No data sources available. Create a sample dataset?</p>
+                    <Button 
+                      onClick={() => {
+                        // Create a sample dataset
+                        const { createSampleDataset } = require('../utils/dataUtils');
+                        const sampleData = createSampleDataset();
+                        dataStore.addDataSource(sampleData);
+                        setSelectedDataSource(sampleData);
+                      }} 
+                      style={{marginTop: "10px"}}
+                    >
+                      Create Sample Dataset
+                    </Button>
+                    <div style={{marginTop: "10px"}}>
+                      <Link to="/data">
+                        <Button variant="secondary">Upload Your Own Data</Button>
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>
