@@ -7,6 +7,7 @@ import NewAgentPage from './pages/NewAgentPage';
 import DataPage from './pages/DataPage';
 import DataUploadPage from './pages/DataUploadPage';
 import ReportsPage from './pages/ReportsPage';
+import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import useInitialize from './hooks/useInitialize';
@@ -202,6 +203,7 @@ function AppContent() {
         <Route path="/data" element={<DataPage />} />
         <Route path="/data/upload" element={<DataUploadPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         
         {/* Debug routes */}
         <Route path="/debug-reports" element={<DebugReports />} />

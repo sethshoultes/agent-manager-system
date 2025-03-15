@@ -200,6 +200,9 @@ const DashboardPage = () => {
             <Link to="/test-menu">
               <Button variant="tertiary">System Admin Panel</Button>
             </Link>
+            <Link to="/settings">
+              <Button variant="tertiary">AI Provider Settings</Button>
+            </Link>
           </div>
         </div>
         

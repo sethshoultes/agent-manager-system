@@ -1,5 +1,5 @@
 /**
- * Executes an agent against a data source using either OpenAI (if configured)
+ * Executes an agent against a data source using either OpenAI, OpenRouter,
  * or falls back to mock processing
  * 
  * @param {Object} agent - The agent to execute
@@ -7,11 +7,14 @@
  * @param {Object} options - Execution options
  * @param {Function} options.onProgress - Callback for progress updates
  * @param {Function} options.onLog - Callback for log messages
- * @param {boolean} options.useOpenAI - Whether to use OpenAI (default: true if API key is set)
- * @param {string} options.openAIKey - OpenAI API key to use for this execution
+ * @param {boolean} options.useOpenAI - Whether to use AI providers (default: true if API key is set)
+ * @param {string} options.apiKey - API key to use for this execution
+ * @param {string} options.provider - Provider to use ('openai' or 'openrouter')
+ * @param {string} options.model - Model to use for this execution
  * @returns {Promise<Object>} - The execution results
  */
 import openaiService from './openaiService';
+import openRouterService from './openRouterService';
 
 export const executeAgent = async (agent, dataSource, options = {}) => {
   if (!agent || !dataSource) {
@@ -19,7 +22,8 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
   }
 
   const { onProgress, onLog } = options;
-  const useOpenAI = options.useOpenAI ?? true; // Default to using OpenAI if available
+  const useAI = options.useAI ?? true; // Default to using AI if available
+  const provider = options.provider || 'openai'; // Default provider is OpenAI
   
   // Stages for execution progress reporting
   const stages = [
@@ -48,17 +52,47 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
   if (onLog) {
     onLog(`Starting execution of ${agent.name}`);
     onLog(`Estimated completion time: ${estimatedCompletionTime.toLocaleTimeString()}`);
+    if (useAI) {
+      onLog(`Using ${provider === 'openai' ? 'OpenAI' : 'OpenRouter'} for AI analysis`);
+    }
   }
 
-  // Set OpenAI API key if provided
-  let usingOpenAI = useOpenAI;
-  if (options.openAIKey) {
-    const success = openaiService.setApiKey(options.openAIKey);
-    if (!success) {
-      usingOpenAI = false;
-      if (onLog) {
-        onLog('Failed to set OpenAI API key. Falling back to mock execution.');
+  // Set API key based on the selected provider
+  let usingAI = useAI;
+  const apiKey = options.apiKey;
+  let service = null;
+  
+  if (apiKey) {
+    if (provider === 'openai') {
+      const success = openaiService.setApiKey(apiKey);
+      if (success) {
+        service = openaiService;
+      } else {
+        usingAI = false;
+        if (onLog) {
+          onLog('Failed to set OpenAI API key. Falling back to mock execution.');
+        }
       }
+    } else if (provider === 'openrouter') {
+      const success = openRouterService.setApiKey(apiKey);
+      if (success) {
+        service = openRouterService;
+      } else {
+        usingAI = false;
+        if (onLog) {
+          onLog('Failed to set OpenRouter API key. Falling back to mock execution.');
+        }
+      }
+    } else {
+      usingAI = false;
+      if (onLog) {
+        onLog(`Unknown provider: ${provider}. Falling back to mock execution.`);
+      }
+    }
+  } else {
+    usingAI = false;
+    if (onLog) {
+      onLog('No API key provided. Using mock execution.');
     }
   }
 
@@ -98,19 +132,19 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
     try {
       let results;
       
-      if (usingOpenAI) {
+      if (usingAI && service) {
         // Report processing stage
-        setTimeout(() => reportProgress(3, 'Sending data to OpenAI for analysis'), 
+        setTimeout(() => reportProgress(3, `Sending data to ${provider === 'openai' ? 'OpenAI' : 'OpenRouter'} for analysis`), 
           stages[0].durationMs + stages[1].durationMs + stages[2].durationMs);
         
-        // Process with OpenAI
+        // Process with selected AI service
         const agentType = agent.type || 'analyzer';
-        const response = await openaiService.generateAnalysis(
+        const response = await service.generateAnalysis(
           dataSource.data,
           dataSource.columns,
           agentType,
           { 
-            model: options.model || 'gpt-4-turbo',
+            model: options.model || (provider === 'openai' ? 'gpt-4-turbo' : 'anthropic/claude-3-haiku'),
             temperature: options.temperature || 0.2
           }
         );
@@ -120,11 +154,12 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
           stages[0].durationMs + stages[1].durationMs + stages[2].durationMs + stages[3].durationMs);
         
         if (response.success) {
-          // Format OpenAI results to match our expected structure
-          results = formatOpenAIResults(response.result, agent, dataSource);
+          // Format AI results to match our expected structure
+          results = formatAIResults(response.result, agent, dataSource);
           
-          // Include OpenAI usage data
+          // Include AI usage data
           results.aiMetadata = {
+            provider,
             model: response.model,
             usage: response.usage
           };
@@ -135,7 +170,7 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
             stages[3].durationMs + stages[4].durationMs);
         } else {
           if (onLog) {
-            onLog(`Error using OpenAI: ${response.error}. Falling back to mock results.`);
+            onLog(`Error using ${provider === 'openai' ? 'OpenAI' : 'OpenRouter'}: ${response.error}. Falling back to mock results.`);
           }
           // Fall back to mock results
           results = generateMockResults(agent, dataSource);
@@ -165,8 +200,8 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
         setTimeout(() => {
           if (onLog) {
             onLog('Execution completed successfully');
-            if (usingOpenAI) {
-              onLog('Results generated using OpenAI');
+            if (usingAI) {
+              onLog(`Results generated using ${provider === 'openai' ? 'OpenAI' : 'OpenRouter'}`);
             } else {
               onLog('Results generated using mock processor');
             }
@@ -174,7 +209,7 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
           
           // Add execution metadata
           results.executedAt = new Date().toISOString();
-          results.executionMethod = usingOpenAI ? 'openai' : 'mock';
+          results.executionMethod = usingAI ? provider : 'mock';
           
           resolve(results);
         }, stages[6].durationMs);
@@ -199,9 +234,9 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
 };
 
 /**
- * Formats OpenAI API results to match our expected structure
+ * Formats AI API results to match our expected structure
  */
-const formatOpenAIResults = (openAIResult, agent, dataSource) => {
+const formatAIResults = (aiResult, agent, dataSource) => {
   // Start with basic result structure
   const results = {
     success: true,
@@ -213,35 +248,35 @@ const formatOpenAIResults = (openAIResult, agent, dataSource) => {
     visualizations: []
   };
   
-  // Handle case where OpenAI response is raw text (not parsed properly)
-  if (openAIResult.rawContent) {
-    results.summary = openAIResult.rawContent;
+  // Handle case where AI response is raw text (not parsed properly)
+  if (aiResult.rawContent) {
+    results.summary = aiResult.rawContent;
     results.insights.push('Analysis completed but could not be properly structured');
     return results;
   }
   
   // Extract summary if available
-  if (openAIResult.summary) {
-    results.summary = openAIResult.summary;
+  if (aiResult.summary) {
+    results.summary = aiResult.summary;
   }
   
   // Extract insights if available
-  if (openAIResult.insights) {
-    results.insights = Array.isArray(openAIResult.insights) 
-      ? openAIResult.insights 
-      : [openAIResult.insights];
+  if (aiResult.insights) {
+    results.insights = Array.isArray(aiResult.insights) 
+      ? aiResult.insights 
+      : [aiResult.insights];
   }
   
   // Extract statistics if available
-  if (openAIResult.statistics) {
-    results.statistics = openAIResult.statistics;
+  if (aiResult.statistics) {
+    results.statistics = aiResult.statistics;
   }
   
   // Extract or transform visualizations if available
-  if (openAIResult.visualizations) {
-    if (Array.isArray(openAIResult.visualizations)) {
+  if (aiResult.visualizations) {
+    if (Array.isArray(aiResult.visualizations)) {
       // Transform each visualization to match our expected format
-      results.visualizations = openAIResult.visualizations.map(viz => {
+      results.visualizations = aiResult.visualizations.map(viz => {
         // If visualization is already in expected format, use it
         if (viz.type && viz.data) {
           return viz;
@@ -262,12 +297,12 @@ const formatOpenAIResults = (openAIResult, agent, dataSource) => {
           }
         };
       });
-    } else if (typeof openAIResult.visualizations === 'object') {
+    } else if (typeof aiResult.visualizations === 'object') {
       // Handle case where visualizations is an object with recommendations
-      results.visualizationRecommendations = openAIResult.visualizations;
+      results.visualizationRecommendations = aiResult.visualizations;
       
       // Try to create visualizations from recommendations
-      const recommendations = openAIResult.visualizations;
+      const recommendations = aiResult.visualizations;
       
       // Map visualization recommendations to actual visualizations
       if (recommendations.charts) {

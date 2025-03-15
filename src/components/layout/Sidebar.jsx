@@ -62,6 +62,15 @@ const Sidebar = () => {
           </li>
         </ul>
       </div>
+      
+      <div className="sidebar-section">
+        <h3 className="sidebar-heading">Configuration</h3>
+        <ul className="sidebar-menu">
+          <li className={`menu-item ${isActive('/settings') ? 'active' : ''}`}>
+            <Link to="/settings">Settings</Link>
+          </li>
+        </ul>
+      </div>
     </aside>
   );
 };
