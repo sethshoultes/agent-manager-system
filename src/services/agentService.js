@@ -1,113 +1,297 @@
 /**
- * Simulates agent execution with mock processing and progress updates
- * In a real implementation, this would connect to an LLM or other AI service
+ * Executes an agent against a data source using either OpenAI (if configured)
+ * or falls back to mock processing
  * 
  * @param {Object} agent - The agent to execute
  * @param {Object} dataSource - The data source to analyze
  * @param {Object} options - Execution options
  * @param {Function} options.onProgress - Callback for progress updates
  * @param {Function} options.onLog - Callback for log messages
+ * @param {boolean} options.useOpenAI - Whether to use OpenAI (default: true if API key is set)
+ * @param {string} options.openAIKey - OpenAI API key to use for this execution
  * @returns {Promise<Object>} - The execution results
  */
+import openaiService from './openaiService';
+
 export const executeAgent = async (agent, dataSource, options = {}) => {
   if (!agent || !dataSource) {
     throw new Error('Agent and data source are required');
   }
 
   const { onProgress, onLog } = options;
+  const useOpenAI = options.useOpenAI ?? true; // Default to using OpenAI if available
   
-  // Return a promise to simulate async processing
-  return new Promise((resolve) => {
-    // Define execution stages
-    const stages = [
-      { name: 'Initializing', durationMs: 500, progress: 10 },
-      { name: 'Loading data', durationMs: 800, progress: 20 },
-      { name: 'Analyzing data structure', durationMs: 700, progress: 35 },
-      { name: 'Processing data', durationMs: 1500, progress: 60 },
-      { name: 'Generating insights', durationMs: 1200, progress: 80 },
-      { name: 'Creating visualizations', durationMs: 1000, progress: 95 },
-      { name: 'Finalizing', durationMs: 300, progress: 100 }
-    ];
+  // Stages for execution progress reporting
+  const stages = [
+    { name: 'Initializing', durationMs: 500, progress: 10 },
+    { name: 'Loading data', durationMs: 800, progress: 20 },
+    { name: 'Analyzing data structure', durationMs: 700, progress: 35 },
+    { name: 'Processing data', durationMs: 1500, progress: 60 },
+    { name: 'Generating insights', durationMs: 1200, progress: 80 },
+    { name: 'Creating visualizations', durationMs: 1000, progress: 95 },
+    { name: 'Finalizing', durationMs: 300, progress: 100 }
+  ];
 
-    // Calculate estimated completion time
-    const totalDuration = stages.reduce((sum, stage) => sum + stage.durationMs, 0);
-    const startTime = new Date();
-    const estimatedCompletionTime = new Date(startTime.getTime() + totalDuration);
+  // Calculate estimated completion time
+  const totalDuration = stages.reduce((sum, stage) => sum + stage.durationMs, 0);
+  const startTime = new Date();
+  const estimatedCompletionTime = new Date(startTime.getTime() + totalDuration);
 
-    if (onProgress) {
-      onProgress({
-        progress: 0,
-        stage: 'Starting',
-        estimatedCompletionTime
-      });
-    }
+  if (onProgress) {
+    onProgress({
+      progress: 0,
+      stage: 'Starting',
+      estimatedCompletionTime
+    });
+  }
 
-    if (onLog) {
-      onLog(`Starting execution of ${agent.name}`);
-      onLog(`Estimated completion time: ${estimatedCompletionTime.toLocaleTimeString()}`);
-    }
+  if (onLog) {
+    onLog(`Starting execution of ${agent.name}`);
+    onLog(`Estimated completion time: ${estimatedCompletionTime.toLocaleTimeString()}`);
+  }
 
-    // Execute stages sequentially
-    let currentStageIndex = 0;
-
-    const executeStage = () => {
-      if (currentStageIndex >= stages.length) {
-        // All stages completed, generate and return results
-        const results = generateMockResults(agent, dataSource);
-        if (onLog) {
-          onLog('Execution completed successfully');
-        }
-        resolve(results);
-        return;
+  // Set OpenAI API key if provided
+  let usingOpenAI = useOpenAI;
+  if (options.openAIKey) {
+    const success = openaiService.setApiKey(options.openAIKey);
+    if (!success) {
+      usingOpenAI = false;
+      if (onLog) {
+        onLog('Failed to set OpenAI API key. Falling back to mock execution.');
       }
+    }
+  }
 
-      const currentStage = stages[currentStageIndex];
+  return new Promise(async (resolve) => {
+    // Function to report progress
+    const reportProgress = (stageIndex, customMessage = null) => {
+      if (stageIndex >= stages.length) return;
+      
+      const stage = stages[stageIndex];
       
       if (onProgress) {
         onProgress({
-          progress: currentStage.progress,
-          stage: currentStage.name
+          progress: stage.progress,
+          stage: stage.name
         });
       }
-
+      
       if (onLog) {
-        onLog(`Stage: ${currentStage.name}`);
-        
-        // Add specific log messages for certain stages
-        switch (currentStage.name) {
-          case 'Loading data':
-            onLog(`Processing ${dataSource.metadata?.rowCount || 0} rows of data`);
-            break;
-          case 'Analyzing data structure':
-            onLog(`Identified ${dataSource.metadata?.columnCount || 0} columns for analysis`);
-            break;
-          case 'Processing data':
-            if (agent.capabilities.includes('statistical-analysis')) {
-              onLog('Performing statistical analysis on numeric columns');
-            }
-            break;
-          case 'Generating insights':
-            onLog(`Applying ${agent.capabilities.length} capabilities to extract insights`);
-            break;
-          case 'Creating visualizations':
-            if (agent.capabilities.includes('chart-generation')) {
-              onLog('Generating appropriate charts for data visualization');
-            }
-            break;
-          default:
-            break;
+        onLog(`Stage: ${stage.name}`);
+        if (customMessage) {
+          onLog(customMessage);
         }
       }
-
-      setTimeout(() => {
-        currentStageIndex++;
-        executeStage();
-      }, currentStage.durationMs);
     };
 
-    // Start execution
-    executeStage();
+    // Report initial stages (loading and analysis)
+    reportProgress(0);
+    setTimeout(() => reportProgress(1, 
+      `Processing ${dataSource.metadata?.rowCount || dataSource.data?.length || 0} rows of data`), 
+      stages[0].durationMs);
+    
+    setTimeout(() => reportProgress(2, 
+      `Identified ${dataSource.metadata?.columnCount || dataSource.columns?.length || 0} columns for analysis`), 
+      stages[0].durationMs + stages[1].durationMs);
+
+    // Execute the agent
+    try {
+      let results;
+      
+      if (usingOpenAI) {
+        // Report processing stage
+        setTimeout(() => reportProgress(3, 'Sending data to OpenAI for analysis'), 
+          stages[0].durationMs + stages[1].durationMs + stages[2].durationMs);
+        
+        // Process with OpenAI
+        const agentType = agent.type || 'analyzer';
+        const response = await openaiService.generateAnalysis(
+          dataSource.data,
+          dataSource.columns,
+          agentType,
+          { 
+            model: options.model || 'gpt-4-turbo',
+            temperature: options.temperature || 0.2
+          }
+        );
+        
+        // Report insights stage
+        setTimeout(() => reportProgress(4, 'Received AI-generated insights'), 
+          stages[0].durationMs + stages[1].durationMs + stages[2].durationMs + stages[3].durationMs);
+        
+        if (response.success) {
+          // Format OpenAI results to match our expected structure
+          results = formatOpenAIResults(response.result, agent, dataSource);
+          
+          // Include OpenAI usage data
+          results.aiMetadata = {
+            model: response.model,
+            usage: response.usage
+          };
+          
+          // Report visualization stage
+          setTimeout(() => reportProgress(5, 'Processing AI-generated visualizations'), 
+            stages[0].durationMs + stages[1].durationMs + stages[2].durationMs + 
+            stages[3].durationMs + stages[4].durationMs);
+        } else {
+          if (onLog) {
+            onLog(`Error using OpenAI: ${response.error}. Falling back to mock results.`);
+          }
+          // Fall back to mock results
+          results = generateMockResults(agent, dataSource);
+        }
+      } else {
+        // Use mock processing if OpenAI is not available
+        // Report processing stages sequentially for mock execution
+        setTimeout(() => reportProgress(3, 'Processing data with local analysis tools'), 
+          stages[0].durationMs + stages[1].durationMs + stages[2].durationMs);
+        
+        setTimeout(() => reportProgress(4, `Applying ${agent.capabilities?.length || 0} capabilities to extract insights`), 
+          stages[0].durationMs + stages[1].durationMs + stages[2].durationMs + stages[3].durationMs);
+          
+        setTimeout(() => reportProgress(5, 'Generating appropriate charts for data visualization'), 
+          stages[0].durationMs + stages[1].durationMs + stages[2].durationMs + 
+          stages[3].durationMs + stages[4].durationMs);
+        
+        // Generate mock results
+        results = generateMockResults(agent, dataSource);
+      }
+      
+      // Report final stage
+      setTimeout(() => {
+        reportProgress(6, 'Finalizing results');
+        
+        // Complete execution
+        setTimeout(() => {
+          if (onLog) {
+            onLog('Execution completed successfully');
+            if (usingOpenAI) {
+              onLog('Results generated using OpenAI');
+            } else {
+              onLog('Results generated using mock processor');
+            }
+          }
+          
+          // Add execution metadata
+          results.executedAt = new Date().toISOString();
+          results.executionMethod = usingOpenAI ? 'openai' : 'mock';
+          
+          resolve(results);
+        }, stages[6].durationMs);
+      }, 
+      stages[0].durationMs + stages[1].durationMs + stages[2].durationMs + 
+      stages[3].durationMs + stages[4].durationMs + stages[5].durationMs);
+    } catch (error) {
+      if (onLog) {
+        onLog(`Error during execution: ${error.message}`);
+        onLog('Falling back to mock results');
+      }
+      
+      // Fall back to mock results in case of any error
+      const results = generateMockResults(agent, dataSource);
+      results.error = error.message;
+      
+      setTimeout(() => {
+        resolve(results);
+      }, 1000);
+    }
   });
+};
+
+/**
+ * Formats OpenAI API results to match our expected structure
+ */
+const formatOpenAIResults = (openAIResult, agent, dataSource) => {
+  // Start with basic result structure
+  const results = {
+    success: true,
+    agentId: agent.id,
+    dataSourceId: dataSource.id,
+    timestamp: new Date().toISOString(),
+    summary: '',
+    insights: [],
+    visualizations: []
+  };
+  
+  // Handle case where OpenAI response is raw text (not parsed properly)
+  if (openAIResult.rawContent) {
+    results.summary = openAIResult.rawContent;
+    results.insights.push('Analysis completed but could not be properly structured');
+    return results;
+  }
+  
+  // Extract summary if available
+  if (openAIResult.summary) {
+    results.summary = openAIResult.summary;
+  }
+  
+  // Extract insights if available
+  if (openAIResult.insights) {
+    results.insights = Array.isArray(openAIResult.insights) 
+      ? openAIResult.insights 
+      : [openAIResult.insights];
+  }
+  
+  // Extract statistics if available
+  if (openAIResult.statistics) {
+    results.statistics = openAIResult.statistics;
+  }
+  
+  // Extract or transform visualizations if available
+  if (openAIResult.visualizations) {
+    if (Array.isArray(openAIResult.visualizations)) {
+      // Transform each visualization to match our expected format
+      results.visualizations = openAIResult.visualizations.map(viz => {
+        // If visualization is already in expected format, use it
+        if (viz.type && viz.data) {
+          return viz;
+        }
+        
+        // Otherwise try to transform it
+        return {
+          type: viz.chartType || 'bar',
+          title: viz.title || 'Data Visualization',
+          data: viz.data || dataSource.data.slice(0, 10),
+          config: viz.config || {
+            xAxisKey: viz.xAxis || dataSource.columns[0],
+            series: [{
+              dataKey: viz.yAxis || dataSource.columns[1],
+              name: viz.name || dataSource.columns[1],
+              color: viz.color || '#0088FE'
+            }]
+          }
+        };
+      });
+    } else if (typeof openAIResult.visualizations === 'object') {
+      // Handle case where visualizations is an object with recommendations
+      results.visualizationRecommendations = openAIResult.visualizations;
+      
+      // Try to create visualizations from recommendations
+      const recommendations = openAIResult.visualizations;
+      
+      // Map visualization recommendations to actual visualizations
+      if (recommendations.charts) {
+        results.visualizations = recommendations.charts.slice(0, 3).map(chart => {
+          return {
+            type: chart.type || 'bar',
+            title: chart.title || 'Data Visualization',
+            // Use sample data for visualization
+            data: dataSource.data.slice(0, 10),
+            config: {
+              xAxisKey: chart.xAxis || dataSource.columns[0],
+              series: [{
+                dataKey: chart.yAxis || dataSource.columns[1],
+                name: chart.name || dataSource.columns[1],
+                color: chart.color || '#0088FE'
+              }]
+            }
+          };
+        });
+      }
+    }
+  }
+  
+  return results;
 };
 
 /**

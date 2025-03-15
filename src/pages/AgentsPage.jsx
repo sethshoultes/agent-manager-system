@@ -10,6 +10,7 @@ import { generateReport } from '../services/reportService';
 import useReportStore from '../stores/reportStore';
 import useAgentStore from '../stores/agentStore';
 import { useNavigate } from 'react-router-dom';
+import OpenAISettings from '../components/agents/OpenAISettings';
 
 const AgentsPage = () => {
   const dataStore = useDataStore();
@@ -54,260 +55,201 @@ const AgentsPage = () => {
     };
   }, [isExecuting]);
 
-  const handleExecuteAgent = (agent) => {
-    setSelectedAgent(agent);
-    setShowExecuteModal(true);
+  const handleExecuteAgent = (agent, options = {}) => {
+    // If options are provided, skip the modal and execute directly
+    if (options && (options.useOpenAI !== undefined)) {
+      setSelectedAgent(agent);
+      
+      // Get the first data source
+      if (dataSources && dataSources.length > 0) {
+        const dataSource = dataSources[0];
+        setSelectedDataSource(dataSource);
+        
+        // Execute with the provided options
+        executeAgentWithOptions(agent, dataSource, options);
+      } else {
+        setError('No data sources available. Please create a data source first.');
+        setShowExecuteModal(true);
+      }
+    } else {
+      // Show the modal for data source selection
+      setSelectedAgent(agent);
+      setShowExecuteModal(true);
+    }
   };
 
   const handleSelectDataSource = (dataSource) => {
     setSelectedDataSource(dataSource);
   };
 
+  // Execute agent with OpenAI options
+  const executeAgentWithOptions = async (agent, dataSource, options = {}) => {
+    if (!agent || !dataSource) {
+      setError('Agent and data source are required');
+      return;
+    }
+    
+    setIsExecuting(true);
+    setError(null);
+    setShowExecuteModal(true);
+    
+    try {
+      console.log('Starting execution with:', {
+        agent: agent.name, 
+        dataSource: dataSource.name,
+        options
+      });
+      
+      // Update agent status
+      const updatedAgent = {
+        ...agent,
+        status: 'running',
+        lastRun: new Date().toISOString()
+      };
+      
+      // Update in localStorage and store
+      updateAgentInLocalStorage(updatedAgent);
+      await startAgent(agent.id);
+      
+      // Reset progress logs
+      setExecutionProgress({
+        progress: 0,
+        stage: 'Starting',
+        logs: ['Initiating agent execution...']
+      });
+      
+      // Progress tracking callbacks
+      const onProgress = (progress) => {
+        setExecutionProgress(prev => ({
+          progress: progress.progress || prev.progress,
+          stage: progress.stage || prev.stage,
+          logs: prev.logs
+        }));
+      };
+      
+      const onLog = (message) => {
+        setExecutionProgress(prev => ({
+          progress: prev.progress,
+          stage: prev.stage,
+          logs: [...prev.logs, message]
+        }));
+      };
+      
+      // Execute the agent with real service
+      const results = await executeAgent(
+        agent, 
+        dataSource, 
+        {
+          onProgress,
+          onLog,
+          useOpenAI: options.useOpenAI,
+          openAIKey: options.openAIKey,
+          model: options.model,
+          temperature: options.temperature
+        }
+      );
+      
+      console.log('Agent execution completed:', results);
+      
+      // Update progress to completed
+      setExecutionProgress(prev => ({
+        progress: 100,
+        stage: 'Completed',
+        logs: [
+          ...prev.logs,
+          'Analysis complete',
+          `Execution method: ${results.executionMethod || 'standard'}`
+        ]
+      }));
+      
+      // Generate report from results
+      const report = generateReport(results, agent, dataSource);
+      console.log('Generated report:', report);
+      
+      // Save report
+      addReport(report)
+        .then(savedReport => {
+          console.log('Report saved successfully:', savedReport);
+          
+          // Update agent status to completed
+          const completedAgent = {
+            ...agent,
+            status: 'completed',
+            lastRun: new Date().toISOString()
+          };
+          
+          // Update in store and localStorage
+          updateAgent(completedAgent);
+          updateAgentInLocalStorage(completedAgent);
+          
+          // Reset UI state
+          setShowExecuteModal(false);
+          setSelectedAgent(null);
+          setSelectedDataSource(null);
+          setIsExecuting(false);
+          
+          // Navigate to reports page
+          navigate('/reports');
+        })
+        .catch(error => {
+          console.error('Failed to save report:', error);
+          setError('Failed to save report: ' + (error.message || 'Unknown error'));
+          setIsExecuting(false);
+          
+          // Update agent status to error
+          handleExecutionError(agent, error);
+        });
+      
+    } catch (error) {
+      console.error('Execution error:', error);
+      handleExecutionError(agent, error);
+    }
+  };
+  
+  // Helper to update agent in localStorage
+  const updateAgentInLocalStorage = (agent) => {
+    if (!agent || !agent.id) return;
+    
+    const currentAgents = JSON.parse(localStorage.getItem('agents') || '[]');
+    const updatedAgents = currentAgents.map(a => 
+      a.id === agent.id ? agent : a
+    );
+    localStorage.setItem('agents', JSON.stringify(updatedAgents));
+  };
+  
+  // Handle execution errors
+  const handleExecutionError = (agent, error) => {
+    setError(error.message || 'An unexpected error occurred');
+    
+    // Update agent status to error
+    const errorAgent = {
+      ...agent,
+      status: 'error',
+      lastRun: new Date().toISOString()
+    };
+    
+    // Update in store and localStorage
+    updateAgent(errorAgent);
+    updateAgentInLocalStorage(errorAgent);
+    
+    setExecutionProgress(prev => ({
+      progress: 0,
+      stage: 'Error',
+      logs: [...prev.logs, `Error: ${error.message || 'Unknown error'}`]
+    }));
+    
+    setIsExecuting(false);
+  };
+  
+  // Handler for the Run Execution button in the modal
   const handleRunExecution = async () => {
     if (!selectedAgent || !selectedDataSource) {
       setError('Please select a data source');
       return;
     }
-
-    setIsExecuting(true);
-    setError(null);
     
-    try {
-      console.log('Starting execution with:', {
-        agent: selectedAgent.name, 
-        dataSource: selectedDataSource.name
-      });
-      
-      // Update the agent status directly and save to localStorage
-      const updatedAgent = {
-        ...selectedAgent,
-        status: 'running',
-        lastRun: new Date().toISOString()
-      };
-      
-      // Manually update agents in localStorage
-      const currentAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-      const updatedAgents = currentAgents.map(agent => 
-        agent.id === selectedAgent.id ? updatedAgent : agent
-      );
-      localStorage.setItem('agents', JSON.stringify(updatedAgents));
-      
-      // Also update in store
-      await startAgent(selectedAgent.id);
-      
-      // Simulate execution progress
-      let progress = 0;
-      const stages = [
-        'Initializing',
-        'Loading data',
-        'Analyzing data structure',
-        'Processing data',
-        'Generating insights',
-        'Creating visualizations'
-      ];
-      
-      // Update progress periodically
-      const progressUpdater = setInterval(() => {
-        progress += 5;
-        if (progress <= 100) {
-          const currentStageIndex = Math.min(
-            Math.floor(progress / (100 / stages.length)),
-            stages.length - 1
-          );
-          
-          setExecutionProgress({
-            progress,
-            stage: stages[currentStageIndex],
-            logs: [
-              ...executionProgress.logs,
-              ...(progress % 20 === 0 ? 
-                [`${stages[currentStageIndex]} at ${progress}%`] : 
-                [])
-            ]
-          });
-        } else {
-          clearInterval(progressUpdater);
-        }
-      }, 300);
-      
-      // Simulate execution completion
-      setTimeout(() => {
-        clearInterval(progressUpdater);
-        
-        // Ensure 100% progress
-        setExecutionProgress({
-          progress: 100,
-          stage: 'Completed',
-          logs: [
-            ...executionProgress.logs,
-            'Analysis complete',
-            'Found patterns in data',
-            'Generated insights from analysis'
-          ]
-        });
-        
-        // Determine what visualizations to create based on agent type/capabilities
-        let visualizations = [];
-        
-        // If agent is a visualizer or has visualization capabilities, add some sample visualizations
-        if (selectedAgent.type === 'visualizer' || 
-            (selectedAgent.capabilities && 
-             (Array.isArray(selectedAgent.capabilities) ? 
-              selectedAgent.capabilities.includes('chart-generation') : 
-              selectedAgent.capabilities.includes('chart-generation')))) {
-          
-          console.log('Agent has visualization capabilities, adding sample charts');
-          
-          // Create sample bar chart
-          visualizations.push({
-            type: 'bar',
-            data: [
-              { name: 'Electronics', value: 450 },
-              { name: 'Clothing', value: 300 },
-              { name: 'Home', value: 150 },
-              { name: 'Books', value: 100 }
-            ],
-            config: {
-              title: 'Sales by Category',
-              xAxisKey: 'name',
-              valueKey: 'value'
-            }
-          });
-          
-          // Create sample line chart if there's data with dates
-          if (selectedDataSource.data && selectedDataSource.data.some(item => item.date)) {
-            visualizations.push({
-              type: 'line',
-              data: [
-                { name: 'Jan', value: 120 },
-                { name: 'Feb', value: 150 },
-                { name: 'Mar', value: 130 },
-                { name: 'Apr', value: 200 },
-                { name: 'May', value: 180 },
-                { name: 'Jun', value: 190 },
-                { name: 'Jul', value: 210 }
-              ],
-              config: {
-                title: 'Monthly Trend',
-                xAxisKey: 'name',
-                valueKey: 'value'
-              }
-            });
-          }
-        }
-        
-        // Generate report
-        const results = {
-          success: true,
-          agentId: selectedAgent.id,
-          dataSourceId: selectedDataSource.id,
-          timestamp: new Date().toISOString(),
-          summary: `Analysis of ${selectedDataSource.name} completed successfully`,
-          insights: [
-            `${selectedAgent.name} analyzed ${selectedDataSource.name} successfully`,
-            'Found patterns in the data',
-            'Generated insights based on the analysis'
-          ],
-          visualizations: visualizations
-        };
-        
-        // Generate report
-        const report = generateReport(results, selectedAgent, selectedDataSource);
-        console.log('Generated report:', report);
-        
-        // Add to reports and also save directly to localStorage
-        addReport(report)
-          .then(savedReport => {
-            console.log('Report saved successfully:', savedReport);
-            
-            // Update agent status to completed
-            const completedAgent = {
-              ...selectedAgent,
-              status: 'completed',
-              lastRun: new Date().toISOString()
-            };
-            
-            // Update in store
-            updateAgent(completedAgent);
-            
-            // Also update directly in localStorage
-            const currentAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-            const updatedAgents = currentAgents.map(agent => 
-              agent.id === selectedAgent.id ? completedAgent : agent
-            );
-            localStorage.setItem('agents', JSON.stringify(updatedAgents));
-            
-            // Close modal and reset state
-            setShowExecuteModal(false);
-            setSelectedAgent(null);
-            setSelectedDataSource(null);
-            setIsExecuting(false);
-            
-            // Navigate to the reports page
-            navigate('/reports');
-          })
-          .catch(error => {
-            console.error('Failed to save report:', error);
-            setError('Failed to save report. Please try again.');
-            setIsExecuting(false);
-          });
-      }, 5000);
-      
-      // Set a timeout to prevent UI from being stuck
-      setTimeout(() => {
-        if (isExecuting) {
-          setError('Execution timed out. Taking longer than expected.');
-          console.error('Execution timeout - current progress:', executionProgress);
-          
-          // Update agent status to error
-          const errorAgent = {
-            ...selectedAgent,
-            status: 'error',
-            lastRun: new Date().toISOString()
-          };
-          
-          // Update in store
-          updateAgent(errorAgent);
-          
-          // Also update directly in localStorage
-          const currentAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-          const updatedAgents = currentAgents.map(agent => 
-            agent.id === selectedAgent.id ? errorAgent : agent
-          );
-          localStorage.setItem('agents', JSON.stringify(updatedAgents));
-          
-          setIsExecuting(false);
-        }
-      }, 60000); // 60-second timeout
-      
-    } catch (err) {
-      console.error('Execution error:', err);
-      setError(err.message || 'An unexpected error occurred');
-      
-      // Update agent status to error
-      const errorAgent = {
-        ...selectedAgent,
-        status: 'error',
-        lastRun: new Date().toISOString()
-      };
-      
-      // Update in store
-      updateAgent(errorAgent);
-      
-      // Also update directly in localStorage
-      const currentAgents = JSON.parse(localStorage.getItem('agents') || '[]');
-      const updatedAgents = currentAgents.map(agent => 
-        agent.id === selectedAgent.id ? errorAgent : agent
-      );
-      localStorage.setItem('agents', JSON.stringify(updatedAgents));
-      
-      setExecutionProgress({
-        progress: 0,
-        stage: 'Error',
-        logs: [...executionProgress.logs, `Error: ${err.message}`]
-      });
-      setIsExecuting(false);
-    }
+    // Execute with default options
+    executeAgentWithOptions(selectedAgent, selectedDataSource, { useOpenAI: false });
   };
 
   const handleExportAgents = () => {

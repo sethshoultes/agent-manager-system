@@ -1,0 +1,153 @@
+.openai-settings {
+  background-color: #f9f9fb;
+  border: 1px solid #e0e0e5;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.openai-settings-header {
+  padding: 12px 15px;
+  background-color: #f0f0f5;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.openai-settings-header:hover {
+  background-color: #e8e8f0;
+}
+
+.openai-settings-header h3 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  color: #444;
+}
+
+.ai-icon {
+  margin-right: 8px;
+}
+
+.toggle-icon {
+  margin-left: auto;
+  font-size: 12px;
+  color: #666;
+}
+
+.openai-settings-content {
+  padding: 15px;
+  border-top: 1px solid #e0e0e5;
+}
+
+.setting-group {
+  margin-bottom: 18px;
+}
+
+.setting-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.setting-group input[type="password"],
+.setting-group input[type="text"],
+.setting-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.setting-group input[type="password"]:focus,
+.setting-group input[type="text"]:focus,
+.setting-group select:focus {
+  border-color: #0066cc;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+.setting-group input[type="range"] {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.temperature-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.setting-help {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.setting-help a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.setting-help a:hover {
+  text-decoration: underline;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.openai-footer {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.api-status {
+  font-size: 13px;
+}
+
+.status-ok {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.status-missing {
+  color: #c62828;
+  font-weight: 500;
+}
+
+.openai-info {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .openai-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
