@@ -403,6 +403,17 @@ const AgentsPage = () => {
             <Button onClick={handleImportClick} variant="secondary">
               Import Agents
             </Button>
+            <Button 
+              onClick={() => {
+                const currentMode = localStorage.getItem('offline_mode') === 'true';
+                localStorage.setItem('offline_mode', (!currentMode).toString());
+                alert(`Offline mode ${!currentMode ? 'enabled' : 'disabled'}. Page will reload.`);
+                window.location.reload();
+              }} 
+              variant={localStorage.getItem('offline_mode') === 'true' ? 'primary' : 'secondary'}
+            >
+              {localStorage.getItem('offline_mode') === 'true' ? 'Disable Offline Mode' : 'Enable Offline Mode'}
+            </Button>
             <input 
               type="file" 
               ref={fileInputRef}
