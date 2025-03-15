@@ -2,10 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import CsvUploader from '../components/data/CsvUploader';
-import { useDataContext } from '../context/DataContext';
+import useDataStore from '../stores/dataStore';
 
 const DataUploadPage = () => {
-  const { addDataSource } = useDataContext();
+  const dataStore = useDataStore();
+  const { addDataSource } = dataStore;
   const navigate = useNavigate();
 
   const handleDataUploaded = (dataSource) => {

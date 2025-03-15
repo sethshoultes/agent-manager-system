@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useAgentContext } from '../../context/AgentContext';
+import useAgentStore from '../../stores/agentStore';
 import AgentCard from './AgentCard';
 import AgentForm from './AgentForm';
 import Modal from '../shared/Modal';
 import Button from '../shared/Button';
 
 const AgentList = ({ onExecuteAgent }) => {
-  const { agents, deleteAgent } = useAgentContext();
+  const agentStore = useAgentStore();
+  const { agents, deleteAgent } = agentStore;
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentAgent, setCurrentAgent] = useState(null);
@@ -32,7 +33,8 @@ const AgentList = ({ onExecuteAgent }) => {
   };
 
   const filterByType = (type) => {
-    return agents.filter(agent => agent.type === type);
+    if (!agents || !Array.isArray(agents)) return [];
+    return agents.filter(agent => agent && agent.type === type);
   };
 
   return (
@@ -42,7 +44,7 @@ const AgentList = ({ onExecuteAgent }) => {
         <Button onClick={handleAddAgent}>Add New Agent</Button>
       </div>
 
-      {agents.length === 0 ? (
+      {!agents || !Array.isArray(agents) || agents.length === 0 ? (
         <div className="empty-state">
           <p>No agents available. Create an agent to get started.</p>
           <Button onClick={handleAddAgent}>Create Your First Agent</Button>
@@ -104,11 +106,11 @@ const AgentList = ({ onExecuteAgent }) => {
           )}
 
           {/* Other Agent Types */}
-          {agents.filter(agent => !['analyzer', 'visualizer', 'summarizer'].includes(agent.type)).length > 0 && (
+          {(Array.isArray(agents) ? agents.filter(agent => agent && agent.type && !['analyzer', 'visualizer', 'summarizer'].includes(agent.type)) : []).length > 0 && (
             <div className="agent-section">
               <h3>Other Agents</h3>
               <div className="agents-grid">
-                {agents.filter(agent => !['analyzer', 'visualizer', 'summarizer'].includes(agent.type)).map(agent => (
+                {(Array.isArray(agents) ? agents.filter(agent => agent && agent.type && !['analyzer', 'visualizer', 'summarizer'].includes(agent.type)) : []).map(agent => (
                   <AgentCard
                     key={agent.id}
                     agent={agent}

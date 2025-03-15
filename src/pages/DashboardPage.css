@@ -1,0 +1,235 @@
+.dashboard-container {
+  padding: 1rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-left h1 {
+  margin: 0;
+}
+
+.system-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background-color: #ccc;
+}
+
+.status-indicator.connected {
+  background-color: #00C49F;
+}
+
+.status-indicator.disconnected {
+  background-color: #FFBB28;
+}
+
+.status-indicator.error {
+  background-color: #FF6B6B;
+}
+
+.status-indicator.checking {
+  background-color: #0088FE;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.dashboard-stats {
+  margin-bottom: 1.5rem;
+}
+
+.stats-card {
+  width: 100%;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.status-executing {
+  color: #FFBB28;
+}
+
+.status-ready {
+  color: #00C49F;
+}
+
+.status-initializing {
+  color: #0088FE;
+}
+
+.report-preview-card {
+  margin-top: 1.5rem;
+}
+
+.report-preview {
+  padding: 1rem;
+}
+
+.report-description {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.report-insights {
+  margin-bottom: 1.5rem;
+}
+
+.report-insights h4, .report-summary h4 {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.report-insights ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.report-insights li {
+  margin-bottom: 0.5rem;
+}
+
+.report-summary {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.summary-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.execute-agent-form {
+  padding: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.agent-selection, .datasource-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+}
+
+.agent-option, .datasource-option {
+  padding: 1rem;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.agent-option:hover, .datasource-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.agent-option.selected, .datasource-option.selected {
+  border-color: #0088FE;
+  background-color: rgba(0, 136, 254, 0.05);
+}
+
+.agent-option h4, .datasource-option h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.agent-option p, .datasource-option p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .header-right {
+    width: 100%;
+  }
+}

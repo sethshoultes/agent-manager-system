@@ -2,13 +2,22 @@ import React, { useState, useRef } from 'react';
 import Layout from '../components/layout/Layout';
 import CsvUploader from '../components/data/CsvUploader';
 import DataPreview from '../components/data/DataPreview';
-import { useDataContext } from '../context/DataContext';
+import useDataStore from '../stores/dataStore';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
-import { createSampleDataset } from '../components/data/DataUtils';
+import { createSampleDataset } from '../utils/dataUtils';
 
 const DataPage = () => {
-  const { dataSources, deleteDataSource, addDataSource, exportDataSources, importDataSources } = useDataContext();
+  const dataStore = useDataStore();
+  const { 
+    dataSources, 
+    deleteDataSource, 
+    addDataSource, 
+    exportDataSources, 
+    importDataSources,
+    isLoading,
+    error
+  } = dataStore;
   const [selectedDataSource, setSelectedDataSource] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -16,9 +25,134 @@ const DataPage = () => {
     setSelectedDataSource(dataSource);
   };
 
-  const handleCreateSample = () => {
-    const sampleData = createSampleDataset();
-    addDataSource(sampleData);
+  const handleCreateSample = async () => {
+    try {
+      console.log('=== STARTING SAMPLE DATASET CREATION (ERROR TRACKING) ===');
+      
+      // Clear any previous errors
+      window.lastSampleDataError = null;
+      
+      // Capture the error in global scope for debugging
+      window.createSampleTry = function() {
+        try {
+          console.log('1. Creating sample dataset...');
+          const sampleData = createSampleDataset();
+          console.log('2. Sample dataset created:', { 
+            id: sampleData?.id || 'missing',
+            name: sampleData?.name || 'missing',
+            hasData: !!sampleData?.data,
+            dataType: sampleData?.data ? typeof sampleData.data : 'undefined',
+            isDataArray: sampleData?.data ? Array.isArray(sampleData.data) : false,
+            dataLength: sampleData?.data && Array.isArray(sampleData.data) ? sampleData.data.length : 0,
+            hasDataString: !!sampleData?.dataString,
+            dataStringType: sampleData?.dataString ? typeof sampleData.dataString : 'undefined',
+            dataStringLength: sampleData?.dataString ? sampleData.dataString.length : 0
+          });
+          
+          // Check for missing data
+          if (!sampleData) {
+            throw new Error('createSampleDataset returned null or undefined');
+          }
+          
+          // Ensure data is actually in the sample data
+          if (!sampleData.data || !Array.isArray(sampleData.data) || sampleData.data.length === 0) {
+            throw new Error('Sample data array is empty or invalid');
+          }
+          
+          // Make sure dataString is set properly
+          if (!sampleData.dataString) {
+            console.log('3. No dataString found in sample data, creating it now');
+            sampleData.dataString = JSON.stringify(sampleData.data);
+          }
+          
+          return sampleData;
+        } catch (error) {
+          console.error('Error in createSampleTry:', error);
+          window.lastSampleDataError = error;
+          throw error;
+        }
+      };
+      
+      // Create the sample data
+      const sampleData = window.createSampleTry();
+      
+      // Check if sample data is valid
+      console.log('4. Sample data validation passed');
+      console.log('5. First data item:', sampleData.data[0]);
+      
+      // Create a safe copy to avoid mutation issues
+      const safeSampleData = JSON.parse(JSON.stringify(sampleData));
+      console.log('6. Created safe copy of sample data');
+      
+      // Double check the data is still valid after cloning
+      if (!safeSampleData.data || !Array.isArray(safeSampleData.data) || safeSampleData.data.length === 0) {
+        throw new Error('Data became invalid after JSON clone operation');
+      }
+      
+      if (!safeSampleData.dataString) {
+        console.log('7. Regenerating dataString after clone');
+        safeSampleData.dataString = JSON.stringify(safeSampleData.data);
+      }
+      
+      // Try to add the data to the store
+      console.log('8. Adding sample dataset to store...');
+      
+      // Add to window for debugging
+      window.lastSampleData = safeSampleData;
+      
+      // Add additional safety check
+      if (!safeSampleData.id || !safeSampleData.data || !safeSampleData.dataString || !safeSampleData.columns) {
+        console.error('ERROR: Sample dataset is missing required properties');
+        
+        // Log the state for debugging
+        console.log('Sample dataset state:', {
+          hasId: !!safeSampleData.id,
+          hasData: !!safeSampleData.data,
+          dataIsArray: Array.isArray(safeSampleData.data),
+          dataLength: Array.isArray(safeSampleData.data) ? safeSampleData.data.length : 'N/A',
+          hasDataString: !!safeSampleData.dataString,
+          hasColumns: !!safeSampleData.columns,
+          columnCount: safeSampleData.columns ? safeSampleData.columns.length : 0
+        });
+        
+        throw new Error('Sample dataset missing required properties');
+      }
+      
+      try {
+        // Make the data immutable to prevent accidental mutations
+        const immutableData = Object.freeze(JSON.parse(JSON.stringify(safeSampleData)));
+        
+        await addDataSource(immutableData);
+        console.log('9. Sample dataset added successfully to store');
+      } catch (storeError) {
+        console.error('10. ERROR: Failed to add to store:', storeError);
+        window.storeError = storeError;
+        throw storeError;
+      }
+      
+      // Also save directly to localStorage as backup
+      try {
+        const currentStored = localStorage.getItem('dataSources');
+        const currentArray = currentStored ? JSON.parse(currentStored) : [];
+        currentArray.push(safeSampleData);
+        localStorage.setItem('dataSources', JSON.stringify(currentArray));
+        console.log('11. Directly saved to localStorage as backup');
+      } catch (localStorageError) {
+        console.warn('12. Warning: Failed to save to localStorage:', localStorageError);
+      }
+      
+      // Force a state update to show the new data source immediately
+      console.log('13. Refreshing UI state...');
+      setSelectedDataSource(null);
+      
+      // Alert user of success
+      console.log('14. SAMPLE DATASET CREATION COMPLETED SUCCESSFULLY');
+      alert('Sample dataset created successfully! Check the console for debug info.');
+      
+    } catch (error) {
+      console.error('ERROR IN SAMPLE DATASET CREATION:', error);
+      alert('Error creating sample dataset. Check the browser console for details.');
+    }
   };
 
   const handleExportDataSources = () => {
@@ -107,9 +241,9 @@ const DataPage = () => {
               </div>
             ) : (
               <div className="data-sources-grid">
-                {dataSources.map(dataSource => (
+                {dataSources.filter(dataSource => dataSource && typeof dataSource === 'object' && dataSource.name).map(dataSource => (
                   <Card 
-                    key={dataSource.id}
+                    key={dataSource.id || `ds-${Math.random()}`}
                     title={dataSource.name}
                     className="data-source-card"
                     footer={

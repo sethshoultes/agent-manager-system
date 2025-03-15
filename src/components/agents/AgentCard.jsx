@@ -56,13 +56,21 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
           <span className="agent-status">{agent.status}</span>
         </div>
         <div className="agent-capabilities">
-          {agent.capabilities && agent.capabilities.length > 0 && 
-            agent.capabilities.map(capability => (
-              <span key={capability} className="capability-tag">
-                {capability}
-              </span>
-            ))
-          }
+          {agent.capabilities && (() => {
+            // Parse capabilities if it's a string
+            const capabilitiesArray = typeof agent.capabilities === 'string' 
+              ? JSON.parse(agent.capabilities) 
+              : agent.capabilities;
+            
+            // Now we can safely map over the array
+            return Array.isArray(capabilitiesArray) && capabilitiesArray.length > 0 
+              ? capabilitiesArray.map(capability => (
+                  <span key={capability} className="capability-tag">
+                    {capability}
+                  </span>
+                ))
+              : null;
+          })()}
         </div>
         <div className="agent-timestamp">
           <small>Created: {new Date(agent.createdAt).toLocaleString()}</small>

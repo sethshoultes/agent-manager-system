@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Data Generator Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 400px;
+            border: 1px solid #ddd;
+        }
+        
+        .result-panel {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        
+        .step {
+            margin-bottom: 30px;
+            border-left: 4px solid #4CAF50;
+            padding-left: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sample Data Generator Test Page</h1>
+    <p>This standalone page tests the "Create Sample Dataset" functionality without relying on the React application.</p>
+    
+    <div class="step">
+        <h2>Step 1: Generate Sample Data</h2>
+        <p>Click the button below to create a sample dataset:</p>
+        <button id="generateBtn">Generate Sample Dataset</button>
+    </div>
+    
+    <div class="result-panel">
+        <h2>Sample Data Properties</h2>
+        <pre id="properties">Click the button to generate sample data...</pre>
+    </div>
+    
+    <div class="result-panel">
+        <h2>Data Preview</h2>
+        <div id="dataPreview">
+            <p>No data to display yet. Click the button above to generate sample data.</p>
+        </div>
+    </div>
+    
+    <div class="result-panel">
+        <h2>Debug Output</h2>
+        <pre id="debug"></pre>
+    </div>
+    
+    <script>
+        // Sample data generation function (copy from your utility file)
+        function createSampleDataset() {
+            console.log('Creating sample dataset - test page version');
+            
+            try {
+                const data = [];
+                
+                // Generate sample data - 10 rows for testing
+                for (let i = 0; i < 10; i++) {
+                    const product = {
+                        id: i + 1,
+                        name: `Product ${i + 1}`,
+                        category: ['Electronics', 'Clothing', 'Home', 'Books'][Math.floor(Math.random() * 4)],
+                        value: Math.round(Math.random() * 1000),
+                        price: parseFloat((Math.random() * 100 + 10).toFixed(2)),
+                        inStock: Math.random() > 0.3 ? 'Yes' : 'No',
+                        date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0]
+                    };
+                    
+                    data.push(product);
+                }
+                
+                // Generate a unique ID for the dataset
+                const randomId = Math.random().toString(36).substring(2, 9);
+                
+                // Define column names
+                const columns = ['id', 'name', 'category', 'value', 'price', 'inStock', 'date'];
+                
+                // Create dataString for compatibility
+                const dataString = JSON.stringify(data);
+                
+                // Build and return the dataset object
+                return {
+                    id: randomId,
+                    name: 'Sample Dataset',
+                    description: 'Automatically generated sample dataset',
+                    type: 'csv',
+                    data: data,
+                    dataString: dataString,
+                    columns: columns,
+                    metadata: {
+                        rowCount: data.length,
+                        columnCount: columns.length,
+                        sampleSize: 5
+                    },
+                    uploadedAt: new Date().toISOString()
+                };
+            } catch (error) {
+                console.error('Error creating sample dataset:', error);
+                return null;
+            }
+        }
+        
+        // Log messages to both console and the debug div
+        function logMessage(message) {
+            const debugElement = document.getElementById('debug');
+            if (typeof message === 'object') {
+                console.log(message);
+                debugElement.textContent += JSON.stringify(message, null, 2) + '\n\n';
+            } else {
+                console.log(message);
+                debugElement.textContent += message + '\n';
+            }
+        }
+        
+        // Display the sample data properties
+        function displayProperties(sampleData) {
+            const propertiesElement = document.getElementById('properties');
+            const properties = {
+                id: sampleData.id,
+                name: sampleData.name,
+                type: sampleData.type,
+                rows: sampleData.data.length,
+                columns: sampleData.columns,
+                hasDataString: !!sampleData.dataString,
+                dataStringLength: sampleData.dataString ? sampleData.dataString.length : 0,
+                uploadedAt: sampleData.uploadedAt
+            };
+            
+            propertiesElement.textContent = JSON.stringify(properties, null, 2);
+        }
+        
+        // Display the sample data in a table
+        function displayDataTable(sampleData) {
+            const previewElement = document.getElementById('dataPreview');
+            
+            if (!sampleData || !sampleData.data || !Array.isArray(sampleData.data) || sampleData.data.length === 0) {
+                previewElement.innerHTML = '<p>No valid data to display.</p>';
+                return;
+            }
+            
+            // Create the table
+            let tableHtml = '<div class="data-table-container"><table>';
+            
+            // Add the header row
+            tableHtml += '<thead><tr><th>#</th>';
+            for (const column of sampleData.columns) {
+                tableHtml += `<th>${column}</th>`;
+            }
+            tableHtml += '</tr></thead>';
+            
+            // Add the data rows
+            tableHtml += '<tbody>';
+            sampleData.data.forEach((row, index) => {
+                tableHtml += `<tr><td>${index + 1}</td>`;
+                for (const column of sampleData.columns) {
+                    const value = row[column] !== undefined ? row[column] : '';
+                    tableHtml += `<td>${value}</td>`;
+                }
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table></div>';
+            
+            previewElement.innerHTML = tableHtml;
+        }
+        
+        // Handle generate button click
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            // Clear previous debug output
+            document.getElementById('debug').textContent = '';
+            
+            logMessage('Generating sample dataset...');
+            const startTime = performance.now();
+            
+            // Create the sample dataset
+            const sampleData = createSampleDataset();
+            
+            const endTime = performance.now();
+            logMessage(`Sample dataset generated in ${(endTime - startTime).toFixed(2)}ms`);
+            
+            if (!sampleData) {
+                logMessage('ERROR: Failed to create sample dataset');
+                return;
+            }
+            
+            // Verify the data
+            logMessage('Verifying sample dataset...');
+            
+            if (!sampleData.data || !Array.isArray(sampleData.data) || sampleData.data.length === 0) {
+                logMessage('ERROR: Sample data is empty or invalid');
+                return;
+            }
+            
+            if (!sampleData.dataString) {
+                logMessage('ERROR: dataString is missing');
+                return;
+            }
+            
+            // Display the data
+            displayProperties(sampleData);
+            displayDataTable(sampleData);
+            
+            logMessage('Sample dataset created and displayed successfully');
+        });
+    </script>
+</body>
+</html>

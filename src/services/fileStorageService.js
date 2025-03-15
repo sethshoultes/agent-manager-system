@@ -72,13 +72,57 @@ export const exportToJsonFile = (filename, data) => {
  */
 export const importFromJsonFile = (file) => {
   return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error('No file provided'));
+      return;
+    }
+    
+    // Check file type (should be JSON)
+    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+      reject(new Error('File must be a valid JSON file'));
+      return;
+    }
+    
     const reader = new FileReader();
     
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target.result);
-        resolve(data);
-      } catch {
+        
+        // Extra validation to ensure the data is in the expected format
+        if (Array.isArray(data)) {
+          // Make sure each item has at least a name property
+          const validData = data.filter(item => item && typeof item === 'object' && item.name);
+          if (validData.length === 0) {
+            reject(new Error('File contains no valid data items'));
+            return;
+          }
+          
+          // Convert any data items that might be strings back to objects
+          for (let i = 0; i < validData.length; i++) {
+            if (validData[i].data && typeof validData[i].data === 'string') {
+              try {
+                validData[i].data = JSON.parse(validData[i].data);
+              } catch (e) {
+                // If it can't be parsed as JSON, keep it as a string
+                console.warn(`Could not parse data for item ${validData[i].name}`, e);
+              }
+            }
+          }
+          
+          resolve(validData);
+        } else if (data && typeof data === 'object') {
+          // Individual item case (wrap in an array)
+          if (data.name) {
+            resolve([data]);
+          } else {
+            reject(new Error('Invalid data format: missing required "name" property'));
+          }
+        } else {
+          reject(new Error('Invalid data format: expected an array or object'));
+        }
+      } catch (error) {
+        console.error('Error parsing JSON file:', error);
         reject(new Error('Invalid JSON file format'));
       }
     };

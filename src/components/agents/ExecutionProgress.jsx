@@ -7,12 +7,12 @@ import './ExecutionProgress.css';
  */
 const ExecutionProgress = ({ progress }) => {
   const {
-    progress: percentage,
-    stage,
-    logs,
+    progress: percentage = 0,
+    stage = 'Starting...',
+    logs = [],
     startTime,
     estimatedCompletionTime
-  } = progress;
+  } = progress || {};
 
   // State for time display
   const [, setTimeUpdate] = useState(0);
@@ -76,10 +76,10 @@ const ExecutionProgress = ({ progress }) => {
       <div className="execution-logs">
         <h4>Execution Logs</h4>
         <div className="logs-container">
-          {logs && logs.map((log, index) => (
+          {Array.isArray(logs) && logs.map((log, index) => (
             <div key={index} className="log-entry">
               <span className="log-timestamp">{new Date().toLocaleTimeString()}</span>
-              <span className="log-message">{log}</span>
+              <span className="log-message">{log || ''}</span>
             </div>
           ))}
         </div>

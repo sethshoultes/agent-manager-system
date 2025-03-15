@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Visualization Functionality</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #4a69bd;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #3c5aa6;
+        }
+        .container {
+            margin-bottom: 30px;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Visualization Functionality</h1>
+    
+    <div class="container">
+        <h2>1. Check Current Reports</h2>
+        <p>This will output all current reports in localStorage.</p>
+        <button onclick="checkReports()">Check Reports</button>
+        <div id="current-reports"></div>
+    </div>
+
+    <div class="container">
+        <h2>2. Create Test Visualization</h2>
+        <p>This will simulate creating a visualization report and storing it.</p>
+        <button onclick="createVisualization('bar')">Create Bar Chart</button>
+        <button onclick="createVisualization('line')">Create Line Chart</button>
+        <button onclick="createVisualization('pie')">Create Pie Chart</button>
+        <div id="create-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>3. Delete Reports</h2>
+        <p>This will delete all reports in localStorage.</p>
+        <button onclick="deleteAllReports()">Delete All Reports</button>
+        <div id="delete-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>Results Log</h2>
+        <pre id="results"></pre>
+    </div>
+
+    <script>
+        // Helper to log results
+        function logResult(text) {
+            const resultsElem = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsElem.textContent += `[${timestamp}] ${text}\n`;
+            resultsElem.scrollTop = resultsElem.scrollHeight;
+        }
+
+        // Check current reports in localStorage
+        function checkReports() {
+            try {
+                const reports = JSON.parse(localStorage.getItem('reports')) || [];
+                document.getElementById('current-reports').innerHTML = `
+                    <pre>${JSON.stringify(reports, null, 2)}</pre>
+                `;
+                logResult(`Found ${reports.length} reports in localStorage`);
+            } catch (error) {
+                document.getElementById('current-reports').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+                logResult(`Error checking reports: ${error.message}`);
+            }
+        }
+
+        // Create a test visualization
+        function createVisualization(chartType) {
+            try {
+                // Sample data for visualization
+                const data = [
+                    { name: 'A', value: 100 },
+                    { name: 'B', value: 200 },
+                    { name: 'C', value: 150 },
+                    { name: 'D', value: 300 },
+                    { name: 'E', value: 250 }
+                ];
+
+                // Create visualization object
+                const visualization = {
+                    type: chartType,
+                    data: data,
+                    config: {
+                        title: `Test ${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart`,
+                        xAxisKey: 'name',
+                        valueKey: 'value'
+                    }
+                };
+
+                // Create report object
+                const report = {
+                    id: Math.random().toString(36).substring(2, 15),
+                    name: `Test ${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart`,
+                    description: 'Created by test script',
+                    agentId: null,
+                    dataSourceId: 'test-data-source',
+                    summary: 'This is a test visualization report.',
+                    insights: ['This is a test insight.'],
+                    visualizations: [visualization],
+                    generatedAt: new Date().toISOString()
+                };
+
+                // Save to localStorage
+                const existingReports = JSON.parse(localStorage.getItem('reports')) || [];
+                existingReports.push(report);
+                localStorage.setItem('reports', JSON.stringify(existingReports));
+
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: green">Successfully created ${chartType} chart report!</p>
+                    <pre>${JSON.stringify(report, null, 2)}</pre>
+                `;
+                logResult(`Created ${chartType} chart report with ID: ${report.id}`);
+                
+                // Refresh reports display
+                checkReports();
+            } catch (error) {
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+                logResult(`Error creating visualization: ${error.message}`);
+            }
+        }
+
+        // Delete all reports
+        function deleteAllReports() {
+            try {
+                localStorage.removeItem('reports');
+                document.getElementById('delete-result').innerHTML = `
+                    <p style="color: green">Successfully deleted all reports!</p>
+                `;
+                logResult('Deleted all reports from localStorage');
+                
+                // Refresh reports display
+                checkReports();
+            } catch (error) {
+                document.getElementById('delete-result').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+                logResult(`Error deleting reports: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            logResult('Test page loaded');
+            checkReports();
+        });
+    </script>
+</body>
+</html>

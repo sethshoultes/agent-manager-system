@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useAgentContext } from '../../context/AgentContext';
+import useAgentStore from '../../stores/agentStore';
 import Button from '../shared/Button';
 import { agentTemplates } from './AgentTemplates';
 
 const AgentForm = ({ onSubmit, initialValues }) => {
-  const { addAgent, updateAgent } = useAgentContext();
+  const agentStore = useAgentStore();
+  const { addAgent, updateAgent } = agentStore;
   const [formData, setFormData] = useState(
     initialValues || {
       name: '',

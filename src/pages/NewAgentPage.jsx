@@ -2,10 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import AgentForm from '../components/agents/AgentForm';
-import { useAgentContext } from '../context/AgentContext';
+import useAgentStore from '../stores/agentStore';
 
 const NewAgentPage = () => {
-  const { addAgent } = useAgentContext();
+  const agentStore = useAgentStore();
+  const { addAgent } = agentStore;
   const navigate = useNavigate();
 
   const handleCreateAgent = (agent) => {

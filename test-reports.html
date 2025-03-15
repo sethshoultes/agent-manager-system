@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Reports Functionality</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #4a69bd;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #3c5aa6;
+        }
+        .container {
+            margin-bottom: 30px;
+        }
+        #report-display {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Reports Functionality</h1>
+    
+    <div class="container">
+        <h2>1. Check Current Reports in localStorage</h2>
+        <button onclick="checkReportsInStorage()">Check Reports</button>
+        <div id="reports-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>2. Create Sample Report</h2>
+        <button onclick="createSampleReport()">Create Bar Chart Report</button>
+        <button onclick="createLineChartReport()">Create Line Chart Report</button>
+        <button onclick="createPieChartReport()">Create Pie Chart Report</button>
+        <div id="create-result"></div>
+    </div>
+
+    <div class="container">
+        <h2>3. Reset Reports</h2>
+        <button onclick="resetReports()">Reset All Reports</button>
+        <div id="reset-result"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Report Viewer</h2>
+        <div>
+            <select id="report-selector" onchange="displaySelectedReport()">
+                <option value="">-- Select a Report --</option>
+            </select>
+            <button onclick="refreshReportSelector()">Refresh List</button>
+        </div>
+        <div id="report-display"></div>
+    </div>
+
+    <script>
+        // Store location constants
+        const REPORTS_STORAGE_KEY = 'reports';
+        
+        // Load reports from localStorage
+        function getReportsFromStorage() {
+            try {
+                const reportsJson = localStorage.getItem(REPORTS_STORAGE_KEY);
+                if (!reportsJson) return [];
+                return JSON.parse(reportsJson);
+            } catch (error) {
+                console.error('Error getting reports from storage:', error);
+                return [];
+            }
+        }
+        
+        // Save reports to localStorage
+        function saveReportsToStorage(reports) {
+            try {
+                localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
+                return true;
+            } catch (error) {
+                console.error('Error saving reports to storage:', error);
+                return false;
+            }
+        }
+        
+        // Display reports in the UI
+        function checkReportsInStorage() {
+            const reports = getReportsFromStorage();
+            const resultElement = document.getElementById('reports-result');
+            
+            if (reports.length === 0) {
+                resultElement.innerHTML = '<p>No reports found in localStorage.</p>';
+            } else {
+                resultElement.innerHTML = `
+                    <p>Found ${reports.length} reports in localStorage:</p>
+                    <pre>${JSON.stringify(reports.map(r => ({
+                        id: r.id,
+                        name: r.name || r.title,
+                        createdAt: r.generatedAt || r.createdAt,
+                        hasVisualizations: (r.visualizations && r.visualizations.length > 0) || false
+                    })), null, 2)}</pre>
+                `;
+            }
+            
+            refreshReportSelector();
+        }
+        
+        // Create a sample report with a bar chart
+        function createSampleReport() {
+            try {
+                const reports = getReportsFromStorage();
+                
+                // Create a new report with a bar chart visualization
+                const newReport = {
+                    id: 'report-' + Date.now(),
+                    name: 'Sample Bar Chart Report',
+                    description: 'A sample report with a bar chart',
+                    generatedAt: new Date().toISOString(),
+                    summary: 'This is a sample report with a bar chart visualization.',
+                    insights: [
+                        'Sample insight 1',
+                        'Sample insight 2'
+                    ],
+                    visualizations: [
+                        {
+                            type: 'bar',
+                            data: [
+                                { name: 'Category A', value: 450 },
+                                { name: 'Category B', value: 300 },
+                                { name: 'Category C', value: 150 },
+                                { name: 'Category D', value: 100 }
+                            ],
+                            config: {
+                                title: 'Sample Bar Chart',
+                                xAxisKey: 'name',
+                                valueKey: 'value'
+                            }
+                        }
+                    ]
+                };
+                
+                // Add to reports array
+                reports.push(newReport);
+                
+                // Save to localStorage
+                saveReportsToStorage(reports);
+                
+                // Update UI
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: green">Successfully created a sample bar chart report!</p>
+                    <pre>${JSON.stringify(newReport, null, 2)}</pre>
+                `;
+                
+                // Refresh reports list
+                checkReportsInStorage();
+            } catch (error) {
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Create a sample report with a line chart
+        function createLineChartReport() {
+            try {
+                const reports = getReportsFromStorage();
+                
+                // Create a new report with a line chart visualization
+                const newReport = {
+                    id: 'report-' + Date.now(),
+                    name: 'Sample Line Chart Report',
+                    description: 'A sample report with a line chart',
+                    generatedAt: new Date().toISOString(),
+                    summary: 'This is a sample report with a line chart visualization.',
+                    insights: [
+                        'Sample line chart insight 1',
+                        'Sample line chart insight 2'
+                    ],
+                    visualizations: [
+                        {
+                            type: 'line',
+                            data: [
+                                { name: 'Jan', value: 100 },
+                                { name: 'Feb', value: 200 },
+                                { name: 'Mar', value: 150 },
+                                { name: 'Apr', value: 300 },
+                                { name: 'May', value: 250 },
+                                { name: 'Jun', value: 350 }
+                            ],
+                            config: {
+                                title: 'Sample Line Chart',
+                                xAxisKey: 'name',
+                                valueKey: 'value'
+                            }
+                        }
+                    ]
+                };
+                
+                // Add to reports array
+                reports.push(newReport);
+                
+                // Save to localStorage
+                saveReportsToStorage(reports);
+                
+                // Update UI
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: green">Successfully created a sample line chart report!</p>
+                    <pre>${JSON.stringify(newReport, null, 2)}</pre>
+                `;
+                
+                // Refresh reports list
+                checkReportsInStorage();
+            } catch (error) {
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Create a sample report with a pie chart
+        function createPieChartReport() {
+            try {
+                const reports = getReportsFromStorage();
+                
+                // Create a new report with a pie chart visualization
+                const newReport = {
+                    id: 'report-' + Date.now(),
+                    name: 'Sample Pie Chart Report',
+                    description: 'A sample report with a pie chart',
+                    generatedAt: new Date().toISOString(),
+                    summary: 'This is a sample report with a pie chart visualization.',
+                    insights: [
+                        'Sample pie chart insight 1',
+                        'Sample pie chart insight 2'
+                    ],
+                    visualizations: [
+                        {
+                            type: 'pie',
+                            data: [
+                                { name: 'Category A', value: 350 },
+                                { name: 'Category B', value: 250 },
+                                { name: 'Category C', value: 200 },
+                                { name: 'Category D', value: 100 }
+                            ],
+                            config: {
+                                title: 'Sample Pie Chart',
+                                nameKey: 'name',
+                                valueKey: 'value'
+                            }
+                        }
+                    ]
+                };
+                
+                // Add to reports array
+                reports.push(newReport);
+                
+                // Save to localStorage
+                saveReportsToStorage(reports);
+                
+                // Update UI
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: green">Successfully created a sample pie chart report!</p>
+                    <pre>${JSON.stringify(newReport, null, 2)}</pre>
+                `;
+                
+                // Refresh reports list
+                checkReportsInStorage();
+            } catch (error) {
+                document.getElementById('create-result').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Reset all reports
+        function resetReports() {
+            try {
+                localStorage.removeItem(REPORTS_STORAGE_KEY);
+                document.getElementById('reset-result').innerHTML = `
+                    <p style="color: green">Successfully reset all reports!</p>
+                `;
+                checkReportsInStorage();
+            } catch (error) {
+                document.getElementById('reset-result').innerHTML = `
+                    <p style="color: red">Error: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Refresh report selector
+        function refreshReportSelector() {
+            const reports = getReportsFromStorage();
+            const selector = document.getElementById('report-selector');
+            
+            // Clear existing options except the first one
+            while (selector.options.length > 1) {
+                selector.remove(1);
+            }
+            
+            // Add options for each report
+            reports.forEach(report => {
+                const option = document.createElement('option');
+                option.value = report.id;
+                option.textContent = report.name || report.title || `Report ${report.id}`;
+                selector.appendChild(option);
+            });
+        }
+        
+        // Display selected report
+        function displaySelectedReport() {
+            const selector = document.getElementById('report-selector');
+            const reportId = selector.value;
+            const displayElement = document.getElementById('report-display');
+            
+            if (!reportId) {
+                displayElement.innerHTML = '<p>Select a report to view its details</p>';
+                return;
+            }
+            
+            const reports = getReportsFromStorage();
+            const report = reports.find(r => r.id === reportId);
+            
+            if (!report) {
+                displayElement.innerHTML = '<p style="color: red">Report not found!</p>';
+                return;
+            }
+            
+            // Display report details
+            displayElement.innerHTML = `
+                <h3>${report.name || report.title || 'Untitled Report'}</h3>
+                <p><strong>Description:</strong> ${report.description || 'No description'}</p>
+                <p><strong>Generated:</strong> ${new Date(report.generatedAt || report.createdAt).toLocaleString()}</p>
+                
+                <h4>Summary</h4>
+                <p>${report.summary || 'No summary available'}</p>
+                
+                ${report.insights && report.insights.length > 0 ? `
+                    <h4>Insights</h4>
+                    <ul>
+                        ${report.insights.map(insight => `<li>${typeof insight === 'string' ? insight : JSON.stringify(insight)}</li>`).join('')}
+                    </ul>
+                ` : ''}
+                
+                <h4>Visualizations</h4>
+                ${report.visualizations && report.visualizations.length > 0 ? `
+                    <p>This report has ${report.visualizations.length} visualization(s):</p>
+                    <pre>${JSON.stringify(report.visualizations.map(v => ({
+                        type: v.type,
+                        title: v.config?.title || 'Untitled',
+                        dataPoints: v.data?.length || 0
+                    })), null, 2)}</pre>
+                ` : '<p>No visualizations in this report</p>'}
+                
+                <h4>Raw Report Data</h4>
+                <pre>${JSON.stringify(report, null, 2)}</pre>
+            `;
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkReportsInStorage();
+        });
+    </script>
+</body>
+</html>

@@ -156,10 +156,14 @@ export const createSampleDataset = () => {
     });
   }
   
+  const randomId = Math.random().toString(36).substring(2, 15);
+  
   return {
-    name: 'sample_data.csv',
+    id: randomId, // Ensure we have an ID
+    name: 'Sample Dataset', // Ensure we have a name
+    description: 'Automatically generated sample dataset',
     type: 'csv',
-    data,
+    data: data,
     columns: ['id', 'name', 'category', 'value', 'price', 'inStock', 'date'],
     metadata: {
       rowCount: data.length,

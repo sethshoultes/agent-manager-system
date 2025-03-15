@@ -58,7 +58,11 @@ const ReportPanel = ({ report, onClose }) => {
             <h3>Key Insights</h3>
             <ul>
               {report.insights.map((insight, index) => (
-                <li key={index}>{insight}</li>
+                <li key={index}>
+                  {typeof insight === 'string' 
+                    ? insight 
+                    : insight.description || insight.title || JSON.stringify(insight)}
+                </li>
               ))}
             </ul>
           </div>
@@ -94,16 +98,28 @@ const ReportPanel = ({ report, onClose }) => {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(report.statistics).map(([field, stats]) => (
-                  <tr key={field}>
-                    <td>{field}</td>
-                    <td>{stats.mean.toFixed(2)}</td>
-                    <td>{stats.median.toFixed(2)}</td>
-                    <td>{stats.min.toFixed(2)}</td>
-                    <td>{stats.max.toFixed(2)}</td>
-                    <td>{stats.count}</td>
-                  </tr>
-                ))}
+                {Object.entries(report.statistics).map(([field, stats]) => {
+                  // Skip non-object stats entries or invalid stats
+                  if (!stats || typeof stats !== 'object') return null;
+                  
+                  // Handle case where stats values might be missing
+                  const mean = typeof stats.mean === 'number' ? stats.mean.toFixed(2) : 'N/A';
+                  const median = typeof stats.median === 'number' ? stats.median.toFixed(2) : 'N/A';
+                  const min = typeof stats.min === 'number' ? stats.min.toFixed(2) : 'N/A';
+                  const max = typeof stats.max === 'number' ? stats.max.toFixed(2) : 'N/A';
+                  const count = typeof stats.count === 'number' ? stats.count : 'N/A';
+                  
+                  return (
+                    <tr key={field}>
+                      <td>{field}</td>
+                      <td>{mean}</td>
+                      <td>{median}</td>
+                      <td>{min}</td>
+                      <td>{max}</td>
+                      <td>{count}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -1,13 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAgentContext } from '../../context/AgentContext';
-import { useDataContext } from '../../context/DataContext';
-import { useReportContext } from '../../context/ReportContext';
+import useAgentStore from '../../stores/agentStore';
+import useDataStore from '../../stores/dataStore';
+import useReportStore from '../../stores/reportStore';
 
 const Sidebar = () => {
-  const { agents } = useAgentContext();
-  const { dataSources } = useDataContext();
-  const { reports } = useReportContext();
+  const agentStore = useAgentStore();
+  const dataStore = useDataStore();
+  const reportStore = useReportStore();
+  
+  const { agents } = agentStore;
+  const { dataSources } = dataStore;
+  const { reports } = reportStore;
   const location = useLocation();
   
   // Determine active menu item

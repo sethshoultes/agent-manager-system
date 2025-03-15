@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import ErrorBoundary from '../shared/ErrorBoundary';
 
 const Layout = ({ children }) => {
   return (
@@ -9,7 +10,9 @@ const Layout = ({ children }) => {
       <div className="app-content">
         <Sidebar />
         <main className="main-content">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

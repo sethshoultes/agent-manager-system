@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
 import Papa from 'papaparse';
-import { useDataContext } from '../../context/DataContext';
+import useDataStore from '../../stores/dataStore';
 import Button from '../shared/Button';
 
 const CsvUploader = ({ onUploadComplete }) => {
   const fileInputRef = useRef();
-  const { addDataSource } = useDataContext();
+  const dataStore = useDataStore();
+  const { addDataSource } = dataStore;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 

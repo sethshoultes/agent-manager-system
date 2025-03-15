@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone Sample Data Generator Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            padding: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        .info {
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sample Data Generator Test</h1>
+        <div class="controls">
+            <button id="generateBtn">Generate Sample Data</button>
+            <button id="clearBtn">Clear Results</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Instructions</h2>
+        <p>This page tests the core functionality of the "Create Sample Dataset" feature:</p>
+        <ol>
+            <li>Click the "Generate Sample Data" button above</li>
+            <li>The sample data will be generated and displayed below</li>
+            <li>Debug information will be shown in the console and in the debug section</li>
+        </ol>
+        <p class="info">This is a standalone test that doesn't require a server - you can simply open this HTML file directly in your browser.</p>
+    </div>
+    
+    <div class="card">
+        <h2>Sample Data Properties</h2>
+        <pre id="properties">Click "Generate Sample Data" to see dataset properties...</pre>
+    </div>
+    
+    <div class="card">
+        <h2>Data Preview</h2>
+        <div id="tableContainer"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Debug Information</h2>
+        <pre id="debug"></pre>
+    </div>
+    
+    <script>
+        // Log to both console and debug element
+        function log(message) {
+            const debugEl = document.getElementById('debug');
+            
+            if (typeof message === 'object') {
+                console.log(message);
+                const formatted = JSON.stringify(message, null, 2);
+                debugEl.textContent += formatted + '\n\n';
+            } else {
+                console.log(message);
+                debugEl.textContent += message + '\n';
+            }
+        }
+        
+        // Clear all output
+        function clearOutput() {
+            document.getElementById('debug').textContent = '';
+            document.getElementById('properties').textContent = 'Click "Generate Sample Data" to see dataset properties...';
+            document.getElementById('tableContainer').innerHTML = '';
+        }
+        
+        // Generate a sample dataset
+        function createSampleDataset() {
+            log('Creating sample dataset...');
+            
+            try {
+                const data = [];
+                
+                // Generate rows of sample data
+                for (let i = 0; i < 10; i++) {
+                    data.push({
+                        id: i + 1,
+                        name: `Product ${i + 1}`,
+                        category: ['Electronics', 'Clothing', 'Home', 'Books'][Math.floor(Math.random() * 4)],
+                        value: Math.round(Math.random() * 1000),
+                        price: parseFloat((Math.random() * 100 + 10).toFixed(2)),
+                        inStock: Math.random() > 0.3 ? 'Yes' : 'No',
+                        date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0]
+                    });
+                }
+                
+                log(`Generated ${data.length} rows of sample data`);
+                
+                // Create the dataString
+                const dataString = JSON.stringify(data);
+                log(`Created dataString with length ${dataString.length}`);
+                
+                // Column definitions
+                const columns = ['id', 'name', 'category', 'value', 'price', 'inStock', 'date'];
+                
+                // Create and return the complete dataset
+                return {
+                    id: 'sample-' + Math.random().toString(36).substring(2, 7),
+                    name: 'Sample Dataset',
+                    description: 'Automatically generated sample dataset',
+                    type: 'csv',
+                    data: data,
+                    dataString: dataString,
+                    columns: columns,
+                    metadata: {
+                        rowCount: data.length,
+                        columnCount: columns.length,
+                        sampleSize: 5
+                    },
+                    uploadedAt: new Date().toISOString()
+                };
+            } catch (error) {
+                log(`ERROR creating sample dataset: ${error.message}`);
+                console.error('Error details:', error);
+                return null;
+            }
+        }
+        
+        // Display properties of the dataset
+        function displayProperties(dataset) {
+            if (!dataset) {
+                document.getElementById('properties').textContent = 'Failed to generate dataset';
+                return;
+            }
+            
+            const properties = {
+                id: dataset.id,
+                name: dataset.name,
+                type: dataset.type,
+                description: dataset.description,
+                rows: dataset.data.length,
+                columns: dataset.columns,
+                metadata: dataset.metadata,
+                hasDataString: !!dataset.dataString,
+                dataStringLength: dataset.dataString ? dataset.dataString.length : 0,
+                uploadedAt: dataset.uploadedAt
+            };
+            
+            document.getElementById('properties').textContent = JSON.stringify(properties, null, 2);
+        }
+        
+        // Display the data in a table
+        function displayTable(dataset) {
+            const container = document.getElementById('tableContainer');
+            
+            if (!dataset || !dataset.data || !Array.isArray(dataset.data) || dataset.data.length === 0) {
+                container.innerHTML = '<p class="error">No data available to display</p>';
+                return;
+            }
+            
+            // Create the table structure
+            let html = '<div class="table-container"><table><thead><tr><th>#</th>';
+            
+            // Add column headers
+            dataset.columns.forEach(column => {
+                html += `<th>${column}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Add data rows
+            dataset.data.forEach((row, index) => {
+                html += `<tr><td>${index + 1}</td>`;
+                
+                dataset.columns.forEach(column => {
+                    const value = row[column] !== undefined ? row[column] : '';
+                    html += `<td>${value}</td>`;
+                });
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+        
+        // Handle generate button click
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            clearOutput();
+            log('Starting sample data generation...');
+            
+            try {
+                // Create the dataset
+                const startTime = performance.now();
+                const sampleData = createSampleDataset();
+                const endTime = performance.now();
+                
+                log(`Sample data generated in ${(endTime - startTime).toFixed(2)}ms`);
+                
+                if (!sampleData) {
+                    log('ERROR: Failed to create sample dataset');
+                    return;
+                }
+                
+                // Validate the dataset
+                if (!sampleData.data || !Array.isArray(sampleData.data) || sampleData.data.length === 0) {
+                    log('ERROR: Generated data is empty or invalid');
+                    return;
+                }
+                
+                if (!sampleData.dataString) {
+                    log('ERROR: dataString property is missing');
+                    return;
+                }
+                
+                // Test parsing the dataString
+                try {
+                    const parsed = JSON.parse(sampleData.dataString);
+                    if (!Array.isArray(parsed)) {
+                        log('ERROR: dataString does not parse to an array');
+                    } else {
+                        log(`Successfully parsed dataString into array with ${parsed.length} items`);
+                    }
+                } catch (error) {
+                    log(`ERROR parsing dataString: ${error.message}`);
+                }
+                
+                // Display the dataset
+                displayProperties(sampleData);
+                displayTable(sampleData);
+                
+                log('<span class="success">Sample dataset created and displayed successfully</span>');
+                
+                // Return the dataset for console inspection
+                window.lastGeneratedData = sampleData;
+                log('Dataset saved to window.lastGeneratedData for inspection in the console');
+                
+            } catch (error) {
+                log(`UNCAUGHT ERROR: ${error.message}`);
+                console.error('Error details:', error);
+            }
+        });
+        
+        // Handle clear button click
+        document.getElementById('clearBtn').addEventListener('click', clearOutput);
+        
+        // Initial message
+        log('Sample data generator test ready - click the "Generate Sample Data" button to begin');
+    </script>
+</body>
+</html>
