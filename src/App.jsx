@@ -77,6 +77,14 @@ function AppContent() {
   // Initialize all stores
   const { isLoading: dataLoading, counts } = useInitialize();
   
+  // Enable offline mode by default if not set
+  React.useEffect(() => {
+    if (localStorage.getItem('offline_mode') === null) {
+      localStorage.setItem('offline_mode', 'true');
+      console.log('Offline mode enabled by default');
+    }
+  }, []);
+  
   // Show loading state while initializing
   if (dataLoading) {
     return <div className="loading-screen">

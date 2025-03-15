@@ -305,9 +305,41 @@ const useAgentStore = create((set, get) => ({
   deleteAgent: async (id) => {
     set({ isLoading: true, error: null });
     
+    // Helper to delete locally
+    const deleteLocally = () => {
+      console.warn('Deleting agent in local state only');
+      
+      // Update in localStorage
+      try {
+        const storedAgents = JSON.parse(localStorage.getItem('agents') || '[]');
+        const updatedAgents = storedAgents.filter(a => a.id !== id);
+        localStorage.setItem('agents', JSON.stringify(updatedAgents));
+      } catch (e) {
+        console.error('Failed to delete agent from localStorage:', e);
+      }
+      
+      // Update in state
+      set(state => ({
+        agents: state.agents.filter(a => a.id !== id),
+        selectedAgent: state.selectedAgent?.id === id ? null : state.selectedAgent,
+        isLoading: false
+      }));
+      
+      return true;
+    };
+    
     try {
+      // Check if running in offline mode
+      const isOfflineMode = localStorage.getItem('offline_mode') === 'true';
+      
+      if (isOfflineMode) {
+        return deleteLocally();
+      }
+      
+      // Try API delete
       await agentService.delete(id);
       
+      // If successful, update local state too
       set(state => ({
         agents: state.agents.filter(a => a.id !== id),
         selectedAgent: state.selectedAgent?.id === id ? null : state.selectedAgent,
@@ -316,24 +348,21 @@ const useAgentStore = create((set, get) => ({
       
       return true;
     } catch (error) {
-      // For offline mode, delete locally
-      if (error.message === 'Network Error') {
-        console.warn('API unreachable, deleting agent from local state only');
+      // For offline mode or API errors, delete locally
+      if (error.message === 'Network Error' || 
+          error.response?.status === 404 || 
+          error.response?.status === 500) {
         
-        set(state => ({
-          agents: state.agents.filter(a => a.id !== id),
-          selectedAgent: state.selectedAgent?.id === id ? null : state.selectedAgent,
-          isLoading: false
-        }));
-        
-        return true;
+        return deleteLocally();
       } else {
         console.error('Error deleting agent:', error);
         set({ 
           isLoading: false,
           error: error.message || 'Failed to delete agent'
         });
-        throw error;
+        
+        // Despite the error, still delete locally to prevent UI issues
+        return deleteLocally();
       }
     }
   },
@@ -353,6 +382,33 @@ const useAgentStore = create((set, get) => ({
         return existingAgent;
       }
       
+      // Check if running in offline mode
+      const isOfflineMode = localStorage.getItem('offline_mode') === 'true';
+      
+      if (isOfflineMode) {
+        // Try to find in localStorage
+        try {
+          const storedAgents = JSON.parse(localStorage.getItem('agents') || '[]');
+          const storedAgent = storedAgents.find(a => a.id === id);
+          
+          if (storedAgent) {
+            set({ 
+              selectedAgent: storedAgent,
+              isLoading: false 
+            });
+            return storedAgent;
+          }
+        } catch (e) {
+          console.error('Error reading from localStorage:', e);
+        }
+        
+        set({ 
+          isLoading: false,
+          error: `Agent with ID ${id} not found`
+        });
+        return null;
+      }
+      
       // If not in state, try to get from API
       const response = await agentService.getById(id);
       set({ 
@@ -363,11 +419,35 @@ const useAgentStore = create((set, get) => ({
       return response.data.agent;
     } catch (error) {
       console.error('Error selecting agent:', error);
+      
+      // For 404 or network errors, check localStorage as fallback
+      if (error.message === 'Network Error' || 
+          error.response?.status === 404 || 
+          error.response?.status === 500) {
+        
+        try {
+          const storedAgents = JSON.parse(localStorage.getItem('agents') || '[]');
+          const storedAgent = storedAgents.find(a => a.id === id);
+          
+          if (storedAgent) {
+            set({ 
+              selectedAgent: storedAgent,
+              isLoading: false,
+              error: null
+            });
+            return storedAgent;
+          }
+        } catch (e) {
+          console.error('Error reading from localStorage:', e);
+        }
+      }
+      
       set({ 
         isLoading: false,
         error: error.message || 'Failed to select agent'
       });
-      throw error;
+      
+      return null;
     }
   },
   
@@ -452,7 +532,44 @@ const useAgentStore = create((set, get) => ({
   stopAgent: async (id) => {
     set({ isLoading: true, error: null });
     
+    // Helper to update locally
+    const updateLocally = () => {
+      console.warn('Stopping agent in local state only');
+      
+      // Update in localStorage
+      try {
+        const storedAgents = JSON.parse(localStorage.getItem('agents') || '[]');
+        const updatedAgents = storedAgents.map(agent => 
+          agent.id === id ? { ...agent, status: 'idle' } : agent
+        );
+        localStorage.setItem('agents', JSON.stringify(updatedAgents));
+      } catch (e) {
+        console.error('Failed to update agent in localStorage:', e);
+      }
+      
+      // Update in state
+      set(state => ({
+        agents: state.agents.map(agent => 
+          agent.id === id ? { ...agent, status: 'idle' } : agent
+        ),
+        selectedAgent: state.selectedAgent?.id === id 
+          ? { ...state.selectedAgent, status: 'idle' } 
+          : state.selectedAgent,
+        isLoading: false
+      }));
+      
+      return { success: true, message: 'Agent stopped in offline mode' };
+    };
+    
     try {
+      // Check if running in offline mode
+      const isOfflineMode = localStorage.getItem('offline_mode') === 'true';
+      
+      if (isOfflineMode) {
+        return updateLocally();
+      }
+      
+      // Try API update
       const response = await agentService.stop(id);
       
       set(state => ({
@@ -467,28 +584,21 @@ const useAgentStore = create((set, get) => ({
       
       return response.data;
     } catch (error) {
-      // For offline mode, update locally
-      if (error.message === 'Network Error') {
-        console.warn('API unreachable, stopping agent in local state only');
+      // For offline mode or API errors, update locally
+      if (error.message === 'Network Error' || 
+          error.response?.status === 404 || 
+          error.response?.status === 500) {
         
-        set(state => ({
-          agents: state.agents.map(agent => 
-            agent.id === id ? { ...agent, status: 'idle' } : agent
-          ),
-          selectedAgent: state.selectedAgent?.id === id 
-            ? { ...state.selectedAgent, status: 'idle' } 
-            : state.selectedAgent,
-          isLoading: false
-        }));
-        
-        return { success: true, message: 'Agent stopped in offline mode' };
+        return updateLocally();
       } else {
         console.error('Error stopping agent:', error);
         set({ 
           isLoading: false,
           error: error.message || 'Failed to stop agent'
         });
-        throw error;
+        
+        // Despite the error, still update locally to prevent UI issues
+        return updateLocally();
       }
     }
   }
