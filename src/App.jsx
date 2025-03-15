@@ -13,11 +13,93 @@ import useInitialize from './hooks/useInitialize';
 import DebugReports from '../debug-reports';
 import './App.css';
 
-// Simple homepage component for easy testing
+// System admin and testing component
 const HomePage = () => {
+  const [serverRunning, setServerRunning] = React.useState(false);
+  const [isChecking, setIsChecking] = React.useState(true);
+  
+  // Check if API server is running
+  React.useEffect(() => {
+    const checkServerStatus = async () => {
+      try {
+        // Try to connect to API server
+        const response = await fetch('http://localhost:3001/api/health', { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 2000
+        });
+        
+        if (response.ok) {
+          setServerRunning(true);
+        } else {
+          setServerRunning(false);
+        }
+      } catch (error) {
+        console.log('API server is not running:', error);
+        setServerRunning(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    
+    checkServerStatus();
+  }, []);
+  
+  // Handle server start button click
+  const handleStartServer = () => {
+    // Open a new terminal and give command to start server
+    alert('Please run the following command in your terminal:\n\nnpm run api\n\nOr navigate to the /api directory and run:\n\nnpm run dev');
+    
+    // In a real app, we might use electron or similar to start the server
+    window.open('http://localhost:3001/api/health', '_blank');
+  };
+  
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Agent Manager System Test Menu</h1>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Agent Manager System Control Panel</h1>
+      
+      <div style={{ 
+        background: serverRunning ? '#d4edda' : '#f8d7da', 
+        color: serverRunning ? '#155724' : '#721c24',
+        padding: '15px 20px', 
+        borderRadius: '8px', 
+        marginBottom: '30px', 
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '15px'
+      }}>
+        <h2 style={{ margin: '0 0 10px 0' }}>
+          {isChecking ? 'Checking API Server Status...' : (serverRunning ? 'API Server: RUNNING' : 'API Server: NOT RUNNING')}
+        </h2>
+        
+        {!isChecking && !serverRunning && (
+          <button 
+            onClick={handleStartServer} 
+            style={{
+              background: '#28a745',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              cursor: 'pointer'
+            }}
+          >
+            Start API Server
+          </button>
+        )}
+        
+        {!isChecking && !serverRunning && (
+          <div style={{ fontSize: '14px', marginTop: '10px' }}>
+            <p>The application is currently running in <strong>Offline Mode</strong>.</p>
+            <p>All data is stored in your browser's localStorage.</p>
+            <p>Start the API server to enable online mode and persistent data storage.</p>
+          </div>
+        )}
+      </div>
       
       <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginBottom: '40px' }}>
         <Link to="/dashboard" style={linkButtonStyle}>Dashboard</Link>
@@ -28,19 +110,25 @@ const HomePage = () => {
       </div>
       
       <div style={{ background: '#f4f6f8', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
-        <h2>Testing Instructions</h2>
-        <p>To test the <strong>Create Sample Dataset</strong> feature:</p>
+        <h2>Quick Start Guide</h2>
         <ol style={{ lineHeight: '1.6' }}>
-          <li>Click the <strong>Data</strong> button above</li>
-          <li>Look for the <strong>Create Sample Dataset</strong> button at the top of the page</li>
-          <li>Click it to generate sample data</li>
-          <li>Verify that the sample data appears in the list</li>
-          <li>Click <strong>View Data</strong> to see the sample data displayed in a table</li>
+          <li>Navigate to the <strong>Data</strong> page to create or upload datasets</li>
+          <li>Go to the <strong>Agents</strong> page to create and configure AI agents</li>
+          <li>Execute agents against your datasets to generate reports</li>
+          <li>View results on the <strong>Reports</strong> page</li>
         </ol>
       </div>
       
+      <div style={{ background: '#f0f0f5', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+        <h3>OpenAI Integration</h3>
+        <p>
+          To use OpenAI-powered analysis, enter your API key when executing an agent. 
+          This will enable advanced data analysis capabilities beyond the built-in functions.
+        </p>
+      </div>
+      
       <div style={{ textAlign: 'center', fontSize: '0.9em', color: '#666' }}>
-        <p>All authentication has been bypassed for testing purposes.</p>
+        <p>This application is running in secure testing mode without authentication.</p>
       </div>
     </div>
   );
@@ -100,8 +188,8 @@ function AppContent() {
   return (
     <div className="app">
       <Routes>
-        {/* Add our test homepage */}
-        <Route path="/" element={<HomePage />} />
+        {/* Set Dashboard as homepage */}
+        <Route path="/" element={<DashboardPage />} />
         
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
@@ -117,6 +205,7 @@ function AppContent() {
         
         {/* Debug routes */}
         <Route path="/debug-reports" element={<DebugReports />} />
+        <Route path="/test-menu" element={<HomePage />} />
         
         {/* Redirect all other routes to homepage */}
         <Route path="*" element={<Navigate to="/" replace />} />

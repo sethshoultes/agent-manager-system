@@ -186,7 +186,7 @@ const DashboardPage = () => {
 
         {/* Test Navigation Buttons */}
         <div style={{ margin: '20px 0', padding: '15px', background: '#f0f0f0', borderRadius: '5px' }}>
-          <h3>Test Navigation</h3>
+          <h3>Navigation</h3>
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
             <Link to="/data">
               <Button>Go to Data Page</Button>
@@ -196,6 +196,9 @@ const DashboardPage = () => {
             </Link>
             <Link to="/reports">
               <Button variant="secondary">Go to Reports Page</Button>
+            </Link>
+            <Link to="/test-menu">
+              <Button variant="tertiary">System Admin Panel</Button>
             </Link>
           </div>
         </div>
