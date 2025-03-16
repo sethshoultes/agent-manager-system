@@ -15,6 +15,9 @@
   --color-success: #2ecc71;
   --color-text-primary: #24292e;
   --color-text-secondary: #6c757d;
+  
+  /* Fix theme toggle colors for light mode */
+  color-scheme: light;
 
   /* Terminal/Log specific colors */
   --color-terminal-background: #000000;
@@ -61,6 +64,9 @@
   --color-success: #1dd1a1;
   --color-text-primary: #f8f9fa;
   --color-text-secondary: #adb5bd;
+  
+  /* Fix theme toggle colors for dark mode */
+  color-scheme: dark;
   
   /* App.css variable compatibility - dark mode */
   --primary-color: #5c85e6;
