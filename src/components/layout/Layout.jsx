@@ -21,26 +21,22 @@ const Layout = ({ children }) => {
   }, []);
   
   return (
-    <div className="app-layout">
+    <div className="app-layout flex flex-col min-h-screen">
       <Header />
+      
       {isOffline && (
-        <div style={{
-          background: '#ffe066',
-          color: '#664d03',
-          padding: '8px 16px',
-          textAlign: 'center',
-          fontWeight: 'bold',
-          fontSize: '14px',
-          borderBottom: '1px solid #ffc107'
-        }}>
+        <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 py-2 px-4 text-center font-semibold text-sm border-b border-yellow-200 dark:border-yellow-800">
           Running in Offline Mode - All changes are stored locally
         </div>
       )}
+      
       <div className="app-content">
         <Sidebar />
         <main className="main-content">
           <ErrorBoundary>
-            {children}
+            <div>
+              {children}
+            </div>
           </ErrorBoundary>
         </main>
       </div>

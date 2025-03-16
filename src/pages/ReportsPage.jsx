@@ -3,69 +3,7 @@ import Layout from '../components/layout/Layout';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
 import Modal from '../components/shared/Modal';
-
-// Minimal ReportPanel component
-const SimpleReportPanel = ({ report, onClose }) => {
-  if (!report || typeof report !== 'object') {
-    return (
-      <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '4px' }}>
-        <h2>Invalid Report</h2>
-        <p>This report appears to be corrupted or invalid.</p>
-        <Button onClick={onClose}>Close</Button>
-      </div>
-    );
-  }
-  
-  return (
-    <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '4px' }}>
-      <h2>{report?.name || report?.title || 'Untitled Report'}</h2>
-      <p><strong>Generated:</strong> {new Date(report?.generatedAt || report?.createdAt || Date.now()).toLocaleString()}</p>
-      <p>{report?.description || 'No description available'}</p>
-      
-      {report?.summary && (
-        <div>
-          <h3>Summary</h3>
-          <p>{report.summary}</p>
-        </div>
-      )}
-      
-      {Array.isArray(report?.insights) && report.insights.length > 0 && (
-        <div>
-          <h3>Insights</h3>
-          <ul>
-            {report.insights.map((insight, i) => (
-              <li key={i}>
-                {typeof insight === 'string' 
-                  ? insight 
-                  : typeof insight === 'object' && insight !== null
-                    ? (insight.description || insight.title || JSON.stringify(insight))
-                    : 'Invalid insight'
-                }
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {Array.isArray(report?.visualizations) && report.visualizations.length > 0 && (
-        <div>
-          <h3>Visualizations</h3>
-          <p>This report has {report.visualizations.length} visualizations</p>
-          <ul>
-            {report.visualizations.map((viz, i) => (
-              <li key={i}>
-                {viz?.type || 'Unknown'} chart: {viz?.config?.title || 'Untitled'} 
-                ({viz?.data?.length || 0} data points)
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      <Button onClick={onClose}>Close</Button>
-    </div>
-  );
-};
+import ReportPanel from '../components/reports/ReportPanel';
 
 const ReportsPage = () => {
   // Direct management of reports from localStorage
@@ -123,24 +61,122 @@ const ReportsPage = () => {
   const createSampleReport = () => {
     const newReport = {
       id: `report-${Date.now()}`,
-      name: 'Sample Report',
-      description: 'A sample report for testing',
+      name: 'Product Sales Analysis',
+      description: 'Comprehensive analysis of product sales by category and region',
       generatedAt: new Date().toISOString(),
-      summary: 'This is a sample report summary.',
-      insights: ['Sample insight 1', 'Sample insight 2'],
-      visualizations: [{
-        type: 'bar',
-        data: [
-          { name: 'A', value: 100 },
-          { name: 'B', value: 200 },
-          { name: 'C', value: 150 }
-        ],
-        config: {
-          title: 'Sample Chart',
-          xAxisKey: 'name',
-          valueKey: 'value'
+      summary: `# Sales Performance Analysis
+
+## Overview
+This report analyzes sales performance across different product categories and regions. The data shows significant variations in sales patterns across different market segments.
+
+## Key Findings
+Electronics consistently outperform other categories, with the West region showing the highest sales volumes. Year-over-year growth is strongest in the Toys category.
+
+## Market Trends
+We've identified several important market trends in the data:
+* **Regional preferences** vary significantly across product categories
+* **Seasonal patterns** show Q4 has 40% higher sales than other quarters
+* **Price sensitivity** is highest in the South region
+* **Customer loyalty** correlates strongly with product quality ratings
+
+## Recommendations
+* Increase marketing budget for Electronics in the West region
+* Investigate underperformance in the South region
+* Expand Toys inventory based on strong growth trends
+* Implement targeted promotions during seasonal peaks`,
+      insights: [
+        'Electronics products generate 42% of total revenue',
+        'The West region outperforms all other regions with 37% higher sales',
+        'Year-over-year growth is highest in the Toys category (24%)',
+        'Products with ratings above 4.5 sell 3x more than lower-rated items',
+        'Seasonal patterns show Q4 has 40% higher sales than other quarters'
+      ],
+      statistics: {
+        'sales': {
+          mean: 532.4,
+          median: 498.2,
+          min: 124.0,
+          max: 1205.6,
+          count: 25
+        },
+        'value': {
+          mean: 621.8,
+          median: 580.0,
+          min: 200.0,
+          max: 1120.0,
+          count: 25
+        },
+        'price': {
+          mean: 78.42,
+          median: 65.99,
+          min: 12.99,
+          max: 199.99,
+          count: 25
+        },
+        'rating': {
+          mean: 3.8,
+          median: 4.0,
+          min: 1.0,
+          max: 5.0,
+          count: 25
         }
-      }]
+      },
+      visualizations: [
+        {
+          type: 'bar',
+          title: 'Sales by Product Category',
+          data: [
+            { name: 'Electronics', value: 4250 },
+            { name: 'Clothing', value: 2180 },
+            { name: 'Home', value: 3150 },
+            { name: 'Books', value: 1430 },
+            { name: 'Toys', value: 2840 }
+          ],
+          config: {
+            xAxisKey: 'name',
+            valueKey: 'value',
+            series: [{
+              dataKey: 'value',
+              name: 'Sales Volume',
+              color: '#0088FE'
+            }]
+          }
+        },
+        {
+          type: 'pie',
+          title: 'Regional Sales Distribution',
+          data: [
+            { name: 'North', value: 28 },
+            { name: 'South', value: 15 },
+            { name: 'East', value: 22 },
+            { name: 'West', value: 35 }
+          ],
+          config: {
+            nameKey: 'name',
+            valueKey: 'value'
+          }
+        },
+        {
+          type: 'line',
+          title: 'Sales Trend by Year',
+          data: [
+            { name: '2021', value: 2400 },
+            { name: '2022', value: 2800 },
+            { name: '2023', value: 3400 },
+            { name: '2024', value: 3900 },
+            { name: '2025', value: 4500 }
+          ],
+          config: {
+            xAxisKey: 'name',
+            valueKey: 'value',
+            series: [{
+              dataKey: 'value',
+              name: 'Annual Sales',
+              color: '#00C49F'
+            }]
+          }
+        }
+      ]
     };
     
     const updatedReports = [...reports, newReport];
@@ -170,28 +206,22 @@ const ReportsPage = () => {
     }
   };
 
-  // Debug current state
-  console.log('ReportsPage render - Current reports state:', {
-    reportsLength: reports.length,
-    reportsArray: reports,
-    hasNulls: reports.some(r => r === null),
-    selectedReport,
-  });
-  
   return (
     <Layout>
-      <div style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h1>Reports</h1>
-          <div>
-            <Button onClick={createSampleReport} style={{ marginRight: '10px' }}>Create Sample Report</Button>
+      <div className="w-full reports-page">
+        <div className="page-header flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Reports</h1>
+          <div className="action-buttons flex space-x-3">
+            <Button onClick={createSampleReport} variant="primary">
+              Create Sample Report
+            </Button>
             <Button 
               onClick={() => {
                 localStorage.removeItem('reports');
                 setReports([]);
                 console.log('Cleared localStorage reports');
               }}
-              style={{ background: '#e74c3c' }}
+              variant="danger"
             >
               Reset Reports
             </Button>
@@ -199,16 +229,18 @@ const ReportsPage = () => {
         </div>
         
         {selectedReport ? (
-          <SimpleReportPanel 
+          <ReportPanel 
             report={selectedReport} 
             onClose={() => setSelectedReport(null)} 
           />
         ) : reports.length === 0 ? (
-          <div style={{ padding: '20px', background: '#f5f5f5', borderRadius: '4px', textAlign: 'center' }}>
-            <p>No reports available. Execute an agent to generate reports or create a sample report for testing.</p>
+          <div className="empty-state p-6 bg-gray-100 dark:bg-gray-800 rounded-lg text-center">
+            <p className="text-[var(--color-text-secondary)]">
+              No reports available. Execute an agent to generate reports or create a sample report for testing.
+            </p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+          <div className="reports-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reports
               .filter(report => 
                 report && 
@@ -220,23 +252,23 @@ const ReportsPage = () => {
                   key={report.id}
                   title={report?.name || report?.title || 'Untitled Report'}
                   footer={
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <Button onClick={() => setSelectedReport(report)}>View</Button>
-                      <Button onClick={() => deleteReport(report.id)}>Delete</Button>
+                    <div className="flex space-x-3">
+                      <Button onClick={() => setSelectedReport(report)} variant="primary" size="small">View</Button>
+                      <Button onClick={() => deleteReport(report.id)} variant="danger" size="small">Delete</Button>
                     </div>
                   }
                 >
-                  <p>{report?.description || 'No description'}</p>
-                  <p><strong>Created:</strong> {
+                  <p className="mb-2 text-sm text-[var(--color-text-secondary)]">{report?.description || 'No description'}</p>
+                  <p className="mb-2 text-sm"><span className="font-semibold">Created:</span> {
                     new Date(report?.generatedAt || report?.createdAt || Date.now()).toLocaleString()
                   }</p>
                   
                   {Array.isArray(report?.insights) && report.insights.length > 0 && (
-                    <p><strong>Insights:</strong> {report.insights.length}</p>
+                    <p className="mb-2 text-sm"><span className="font-semibold">Insights:</span> {report.insights.length}</p>
                   )}
                   
                   {Array.isArray(report?.visualizations) && report.visualizations.length > 0 && (
-                    <p><strong>Visualizations:</strong> {report.visualizations.length}</p>
+                    <p className="mb-2 text-sm"><span className="font-semibold">Visualizations:</span> {report.visualizations.length}</p>
                   )}
                 </Card>
               ))}

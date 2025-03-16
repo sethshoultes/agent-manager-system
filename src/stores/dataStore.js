@@ -363,63 +363,42 @@ const useDataStore = create(
     set({ isLoading: true, error: null });
     
     try {
+      console.log('Importing data from file:', file.name);
       const importedData = await importFromJsonFile(file);
       
       if (Array.isArray(importedData)) {
-        if (auth.isAuthenticated()) {
-          try {
-            // Process each data source and add it to the API
-            for (const dataSource of importedData) {
-              const dataSourceData = {
-                name: dataSource.name,
-                description: dataSource.description || '',
-                type: dataSource.type || 'csv',
-                schema: dataSource.schema || {},
-                configuration: dataSource.configuration || {},
-                data: typeof dataSource.data === 'object' ? JSON.stringify(dataSource.data) : dataSource.data
-              };
-              
-              await dataSourceService.create(dataSourceData);
-            }
-            
-            // Fetch updated list
-            const response = await dataSourceService.getAll();
-            set({ 
-              dataSources: response.data.dataSources,
-              isLoading: false
-            });
-          } catch (apiError) {
-            // Fallback to local state if API is unreachable
-            if (apiError.message === 'Network Error') {
-              console.warn('API unreachable, importing data sources to local state only');
-              
-              // Add IDs if missing
-              const processedData = importedData.map(dataSource => ({
-                ...dataSource,
-                id: dataSource.id || Math.random().toString(36).substr(2, 9),
-                uploadedAt: dataSource.uploadedAt || new Date().toISOString()
-              }));
-              
-              set({ 
-                dataSources: processedData,
-                isLoading: false
-              });
-            } else {
-              throw apiError;
-            }
+        console.log(`Successfully parsed ${importedData.length} data sources from file`);
+        
+        // Skip API call and just use local storage (offline mode)
+        // Add IDs if missing and ensure all required fields exist
+        const processedData = importedData.map(dataSource => ({
+          ...dataSource,
+          id: dataSource.id || `ds-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          uploadedAt: dataSource.uploadedAt || new Date().toISOString(),
+          type: dataSource.type || 'csv',
+          metadata: dataSource.metadata || {
+            rowCount: Array.isArray(dataSource.data) ? dataSource.data.length : 0,
+            columnCount: dataSource.columns ? dataSource.columns.length : 0,
+            sampleSize: Math.min(5, Array.isArray(dataSource.data) ? dataSource.data.length : 0)
           }
-        } else {
-          // Not authenticated, just update local state
-          const processedData = importedData.map(dataSource => ({
-            ...dataSource,
-            id: dataSource.id || Math.random().toString(36).substr(2, 9),
-            uploadedAt: dataSource.uploadedAt || new Date().toISOString()
-          }));
-          
-          set({ 
-            dataSources: processedData,
-            isLoading: false
-          });
+        }));
+        
+        // Merge with existing data sources
+        const currentSources = get().dataSources || [];
+        const mergedSources = [...currentSources, ...processedData];
+        
+        // Update state
+        set({ 
+          dataSources: mergedSources,
+          isLoading: false
+        });
+        
+        // Save to localStorage
+        try {
+          localStorage.setItem('dataSources', JSON.stringify(mergedSources));
+          console.log('Saved imported data sources to localStorage');
+        } catch (storageError) {
+          console.error('Failed to save to localStorage:', storageError);
         }
         
         return true;

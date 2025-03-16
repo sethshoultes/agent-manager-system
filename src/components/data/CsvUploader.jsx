@@ -98,7 +98,10 @@ const CsvUploader = ({ onUploadComplete }) => {
           <>
             <div className="upload-icon">📄</div>
             <p>Drag and drop a CSV file here, or click to select</p>
-            <Button onClick={() => fileInputRef.current.click()}>
+            <Button onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the parent div's onClick
+              fileInputRef.current.click();
+            }}>
               Select CSV File
             </Button>
           </>

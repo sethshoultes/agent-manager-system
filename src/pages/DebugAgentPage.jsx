@@ -339,6 +339,38 @@ const DebugAgentPage = () => {
                     </>
                   )}
                   
+                  {executionResults.visualizations && executionResults.visualizations.length > 0 && (
+                    <>
+                      <h3>Visualizations</h3>
+                      <div style={{ marginBottom: '20px' }}>
+                        {executionResults.visualizations.map((viz, index) => (
+                          <div key={index} style={{ 
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            padding: '15px',
+                            marginBottom: '15px',
+                            backgroundColor: '#ffffff'
+                          }}>
+                            <h4>{viz.title || `Visualization ${index + 1}`}</h4>
+                            <p>Type: {viz.type}</p>
+                            <p>Data points: {Array.isArray(viz.data) ? viz.data.length : 'unknown'}</p>
+                            
+                            <div style={{ 
+                              padding: '10px',
+                              backgroundColor: '#f5f5f5',
+                              borderRadius: '4px',
+                              marginTop: '10px',
+                              fontFamily: 'monospace',
+                              fontSize: '12px'
+                            }}>
+                              <pre>{JSON.stringify(viz, null, 2)}</pre>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  
                   <pre style={{ 
                     marginTop: '20px', 
                     backgroundColor: '#f5f5f5', 

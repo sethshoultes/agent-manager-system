@@ -13,7 +13,7 @@ const AgentCard = ({ agent, onDelete, onEdit, onExecute }) => {
   // Initialize data sources on component mount
   useEffect(() => {
     dataStore.fetchDataSources();
-  }, []);
+  }, [dataStore]);
   
   // Component state
   const [showModal, setShowModal] = useState(false);

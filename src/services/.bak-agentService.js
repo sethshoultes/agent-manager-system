@@ -478,7 +478,7 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
 };
 
 /**
- * Formats AI API results to match our expected structure for visualization
+ * Formats AI API results to match our expected structure
  */
 const formatAIResults = (aiResult, agent, dataSource) => {
   // Start with basic result structure
@@ -543,83 +543,9 @@ const formatAIResults = (aiResult, agent, dataSource) => {
     return results;
   }
   
-  // Extract and format summary if available
+  // Extract summary if available
   if (aiResult.summary) {
-    // Convert plain text summaries to markdown-styled content for better rendering
-    const summary = aiResult.summary;
-    
-    // Ensure the summary has proper Markdown formatting
-    if (!summary.includes('#') && !summary.includes('*') && !summary.includes('-')) {
-      // Split into paragraphs for better formatting
-      const paragraphs = summary.split('\n\n');
-      
-      if (paragraphs.length > 0) {
-        // Create a properly formatted markdown document
-        let formattedSummary = '';
-        
-        // Add title (first paragraph as heading)
-        formattedSummary = `# ${paragraphs[0].trim()}\n\n`;
-        
-        // Process and format each paragraph
-        for (let i = 1; i < paragraphs.length; i++) {
-          const para = paragraphs[i].trim();
-          
-          // Check if it looks like a section header (short and no period)
-          if (para.length < 50 && !para.includes('.')) {
-            formattedSummary += `## ${para}\n\n`;
-          } 
-          // Check if it looks like a list (contains commas)
-          else if (para.includes(',') && para.split(',').length > 2) {
-            const items = para.split(',').map(item => item.trim());
-            // Create a proper markdown bullet list
-            formattedSummary += items.map(item => `* ${item}`).join('\n') + '\n\n';
-          }
-          // Check if it might be a numbered list or process
-          else if (para.toLowerCase().includes('step') || 
-                  para.toLowerCase().includes('process') || 
-                  para.toLowerCase().includes('procedure')) {
-            // Try to break into steps if possible
-            const sentences = para.split(/\.\s+/);
-            if (sentences.length > 2) {
-              formattedSummary += '## Steps\n\n';
-              sentences.forEach((sentence, idx) => {
-                if (sentence.trim().length > 0) {
-                  formattedSummary += `${idx+1}. ${sentence.trim()}${!sentence.endsWith('.') ? '.' : ''}\n`;
-                }
-              });
-              formattedSummary += '\n';
-            } else {
-              formattedSummary += `${para}\n\n`;
-            }
-          }
-          // Regular paragraph
-          else {
-            formattedSummary += `${para}\n\n`;
-          }
-        }
-        
-        // Add a conclusion section if not already present
-        if (!formattedSummary.toLowerCase().includes('conclusion') && 
-            !formattedSummary.toLowerCase().includes('summary')) {
-          formattedSummary += '## Conclusion\n\n';
-          formattedSummary += 'The above analysis provides key insights into the data patterns. ';
-          formattedSummary += 'Consider these findings when making decisions based on this dataset.\n\n';
-        }
-        
-        results.summary = formattedSummary;
-      } else {
-        results.summary = summary;
-      }
-    } else {
-      // Already has markdown, but make sure it starts with a heading
-      if (!summary.trim().startsWith('#')) {
-        const lines = summary.split('\n');
-        const title = lines[0] || 'Analysis Report';
-        results.summary = `# ${title}\n\n${summary}`;
-      } else {
-        results.summary = summary;
-      }
-    }
+    results.summary = aiResult.summary;
   }
   
   // Extract insights if available

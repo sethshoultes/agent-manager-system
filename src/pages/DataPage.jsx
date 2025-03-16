@@ -168,10 +168,21 @@ const DataPage = () => {
   const handleImportDataSources = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      const success = await importDataSources(file);
-      if (success) {
-        // Reset the file input so the same file can be selected again if needed
-        event.target.value = null;
+      try {
+        const success = await importDataSources(file);
+        if (success) {
+          alert('Data sources imported successfully!');
+        } else {
+          alert('Failed to import data sources.');
+        }
+      } catch (error) {
+        console.error('Error importing data sources:', error);
+        alert(`Error importing data sources: ${error.message || 'Unknown error'}`);
+      } finally {
+        // Always reset the file input so the same file can be selected again
+        if (event.target) {
+          event.target.value = null;
+        }
       }
     }
   };

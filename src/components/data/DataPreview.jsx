@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy } from 'react';
 import Card from '../shared/Card';
 import Button from '../shared/Button';
 
@@ -78,12 +78,42 @@ const DataPreview = ({ dataSource }) => {
     console.log('DataPreview: Processing dataSource:', {
       id: dataSource.id,
       name: dataSource.name,
+      type: dataSource.type,
       dataType: typeof dataSource.data,
-      dataKeys: dataSource.data ? Object.keys(dataSource.data).length : 0,
-      dataStringType: typeof dataSource.dataString
+      dataKeys: dataSource.data ? (Array.isArray(dataSource.data) ? dataSource.data.length : Object.keys(dataSource.data).length) : 0,
+      hasRows: Boolean(dataSource.rows),
+      rowsLength: dataSource.rows ? dataSource.rows.length : 0,
+      dataStringType: typeof dataSource.dataString,
+      hasReportData: Boolean(dataSource.reportData)
     });
     
-    // If we have an array, use it directly
+    // Special handling for report type data sources
+    if (dataSource.type === 'report' && dataSource.reportData) {
+      console.log('DataPreview: Processing report type data source');
+      
+      // If rows is available and has data, use it directly
+      if (dataSource.rows && Array.isArray(dataSource.rows) && dataSource.rows.length > 0) {
+        console.log('DataPreview: Using rows from report data source, length:', dataSource.rows.length);
+        return dataSource.rows;
+      }
+      
+      // Check for report data that might have a dataset
+      if (dataSource.reportData?.statistics?.dataset && 
+          Array.isArray(dataSource.reportData.statistics.dataset) && 
+          dataSource.reportData.statistics.dataset.length > 0) {
+        console.log('DataPreview: Found dataset in report statistics, length:', dataSource.reportData.statistics.dataset.length);
+        return dataSource.reportData.statistics.dataset;
+      }
+    }
+    
+    // If we have an array in .rows, use it directly (for CSV or other structured data)
+    if (dataSource.rows && Array.isArray(dataSource.rows) && dataSource.rows.length > 0) {
+      console.log('DataPreview: Using rows array directly, length:', dataSource.rows.length);
+      console.log('DataPreview: First item sample:', dataSource.rows[0]);
+      return dataSource.rows;
+    }
+    
+    // If we have an array in .data, use it directly
     if (dataSource.data && Array.isArray(dataSource.data) && dataSource.data.length > 0) {
       console.log('DataPreview: Using data array directly, length:', dataSource.data.length);
       console.log('DataPreview: First item sample:', dataSource.data[0]);
@@ -149,12 +179,119 @@ const DataPreview = ({ dataSource }) => {
   if (!displayData || displayData.length === 0) {
     console.log('Empty state: No data available for preview');
     
+    // Check if we are dealing with a report that has a summary but no data
+    const isReportFile = dataSource?.type === 'report' || Boolean(dataSource?.reportData);
+    
+    // For reports, we might want to show the summary instead
+    let reportSummary = "";
+    if (isReportFile && dataSource?.reportData?.summary) {
+      reportSummary = dataSource.reportData.summary;
+      console.log('Report summary found, length:', reportSummary.length);
+    }
+    
+    // Get data sample for debugging
     let debugInfo = "";
     if (dataSource?.dataString && typeof dataSource.dataString === 'string') {
       // Try to extract partial data for debugging
       debugInfo = dataSource.dataString.substring(0, 100) + "...";
+    } else if (dataSource?.data && typeof dataSource.data === 'object') {
+      // Convert object to string for debugging
+      try {
+        debugInfo = JSON.stringify(dataSource.data).substring(0, 100) + "...";
+      } catch (e) {
+        debugInfo = "Error stringifying data object";
+      }
     }
     
+    // If this is a report, show a different UI
+    if (isReportFile) {
+      const [showAiProcessing, setShowAiProcessing] = useState(false);
+      
+      // Import AIProcessedReport component directly
+      const AIProcessedReport = require('../reports/AIProcessedReportNew').default;
+      
+      // If AI processing is active, show the AI processing component
+      if (showAiProcessing) {
+        return (
+          <div>
+            <AIProcessedReport 
+              report={dataSource.reportData || dataSource} 
+              onClose={() => setShowAiProcessing(false)} 
+              preferredFormat="autodetect"
+            />
+          </div>
+        );
+      }
+      
+      return (
+        <div className="report-preview" style={{ padding: "20px", backgroundColor: "#f9f9f9", borderRadius: "5px" }}>
+          <h3>Report Data: {dataSource?.name || 'Unnamed Report'}</h3>
+          
+          <div style={{ marginTop: "10px", padding: "15px", backgroundColor: "#f3f9ff", border: "1px solid #cce5ff", borderRadius: "5px" }}>
+            <h4>Report Information</h4>
+            <ul style={{ listStyle: "none", padding: "0", margin: "0", fontSize: "14px", lineHeight: "1.6" }}>
+              <li><strong>Report ID:</strong> {dataSource?.reportData?.id || dataSource?.id || 'Unknown'}</li>
+              <li><strong>Created At:</strong> {dataSource?.reportData?.generatedAt ? new Date(dataSource.reportData.generatedAt).toLocaleString() : 'Unknown'}</li>
+              <li><strong>Related Data Source:</strong> {dataSource?.dataSourceId || dataSource?.reportData?.dataSourceId || 'None'}</li>
+              <li><strong>Has Insights:</strong> {dataSource?.reportData?.insights && dataSource.reportData.insights.length > 0 ? 'Yes' : 'No'}</li>
+              <li><strong>Has Visualizations:</strong> {dataSource?.reportData?.visualizations && dataSource.reportData.visualizations.length > 0 ? 'Yes' : 'No'}</li>
+            </ul>
+          </div>
+          
+          {reportSummary && (
+            <div style={{ marginTop: "15px", padding: "15px", backgroundColor: "#fff", border: "1px solid #e1e4e8", borderRadius: "5px" }}>
+              <h4>Report Summary</h4>
+              <div style={{ 
+                maxHeight: "300px", 
+                overflow: "auto", 
+                padding: "10px", 
+                fontSize: "14px",
+                lineHeight: "1.5",
+                whiteSpace: "pre-wrap" 
+              }}>
+                {reportSummary}
+              </div>
+            </div>
+          )}
+          
+          <div style={{ marginTop: "15px", padding: "10px", backgroundColor: "#fff9c4", border: "1px solid #fff59d", borderRadius: "3px" }}>
+            <p style={{ fontWeight: "bold", marginBottom: "8px" }}>Note:</p>
+            <p>This is a report file rather than a data source. While we can't display tabular data, you can view the report summary above.</p>
+            <p>To work with the actual data, please locate and import the original data source.</p>
+          </div>
+          
+          <div style={{ marginTop: "20px", display: "flex", justifyContent: "center" }}>
+            <Button
+              variant="primary"
+              onClick={() => setShowAiProcessing(true)}
+              size="medium"
+            >
+              Process with AI
+            </Button>
+          </div>
+          
+          {/* Debug information */}
+          <div style={{ marginTop: "20px", padding: "10px", backgroundColor: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: "3px" }}>
+            <details>
+              <summary style={{ cursor: "pointer", fontWeight: "bold" }}>Advanced Technical Details</summary>
+              <div style={{ marginTop: "10px" }}>
+                <ul style={{ listStyle: "none", padding: "0", margin: "0", fontSize: "13px", lineHeight: "1.5" }}>
+                  <li><strong>Data source type:</strong> {dataSource?.type || 'Unknown'}</li>
+                  <li><strong>ID:</strong> {dataSource?.id || 'Missing'}</li>
+                  <li><strong>Has report data:</strong> {dataSource?.reportData ? 'Yes' : 'No'}</li>
+                  <li><strong>Has data array:</strong> {dataSource?.data ? `Yes (${Array.isArray(dataSource.data) ? `Array[${dataSource.data.length}]` : typeof dataSource.data})` : 'No'}</li>
+                  <li><strong>Has rows array:</strong> {dataSource?.rows ? `Yes (${Array.isArray(dataSource.rows) ? `Array[${dataSource.rows.length}]` : typeof dataSource.rows})` : 'No'}</li>
+                  <li><strong>Parse result:</strong> {dataFormat}</li>
+                  {parseError && <li style={{ color: "red" }}><strong>Parse error:</strong> {parseError}</li>}
+                </ul>
+              </div>
+            </details>
+          </div>
+        </div>
+      );
+    }
+    
+    // Standard empty state for non-report data sources
     return (
       <div className="empty-state" style={{ padding: "20px", backgroundColor: "#f9f9f9", borderRadius: "5px" }}>
         <h3 style={{ color: "red" }}>Debug: No Data Available</h3>

@@ -521,9 +521,9 @@ const AgentsPage = () => {
                         <p>No data sources available. Please upload a CSV file first.</p>
                       </div>
                     ) : (
-                      dataSources.filter(ds => ds && typeof ds === 'object' && ds.id).map(ds => (
+                      dataSources.filter(ds => ds && typeof ds === 'object' && ds.id).map((ds, index) => (
                         <div 
-                          key={ds.id}
+                          key={`${ds.id}-${index}`}
                           className="data-source-item"
                           data-id={ds.id}
                           style={{ 

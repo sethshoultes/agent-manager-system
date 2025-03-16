@@ -64,7 +64,18 @@ const ChartComponent = ({ type, data, config }) => {
   const normalizedData = normalizeData();
   
   if (!normalizedData || normalizedData.length === 0) {
-    return <div className="no-data">No data available for visualization</div>;
+    return (
+      <div className="no-data" style={{
+        padding: '20px',
+        textAlign: 'center',
+        backgroundColor: '#f8f9fa',
+        border: '1px dashed #dee2e6',
+        borderRadius: '4px',
+        color: '#6c757d'
+      }}>
+        No data available for visualization
+      </div>
+    );
   }
   
   // Normalize config to avoid errors

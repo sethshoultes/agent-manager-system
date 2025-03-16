@@ -150,20 +150,53 @@ export const createSampleDataset = () => {
   try {
     const data = [];
     
-    // Generate a smaller dataset - 10 rows for testing
-    for (let i = 0; i < 10; i++) {
+    // Generate a more visualization-friendly dataset - 25 rows for testing
+    const categories = ['Electronics', 'Clothing', 'Home', 'Books', 'Toys'];
+    const regions = ['North', 'South', 'East', 'West', 'Central'];
+    const years = [2021, 2022, 2023, 2024, 2025];
+    
+    // Generate structured data with clear patterns for better visualizations
+    for (let i = 0; i < 25; i++) {
+      const category = categories[i % categories.length];
+      const region = regions[Math.floor(i / 5) % regions.length];
+      const year = years[Math.floor(i / (25/years.length))];
+      
+      // Create values with patterns based on category and region
+      let baseValue = 0;
+      if (category === 'Electronics') baseValue = 800;
+      else if (category === 'Clothing') baseValue = 400;
+      else if (category === 'Home') baseValue = 600;
+      else if (category === 'Books') baseValue = 200;
+      else baseValue = 300;
+      
+      // Regional variations
+      if (region === 'North') baseValue *= 1.2;
+      else if (region === 'South') baseValue *= 0.9;
+      else if (region === 'West') baseValue *= 1.4;
+      else if (region === 'East') baseValue *= 1.1;
+      
+      // Year trend - increasing over time
+      const yearMultiplier = 1 + ((year - 2021) * 0.05);
+      
+      const value = Math.round(baseValue * yearMultiplier);
+      const sales = Math.round(value * (0.8 + Math.random() * 0.4));
+      
       const product = {
         id: i + 1,
         name: `Product ${i + 1}`,
-        category: ['Electronics', 'Clothing', 'Home', 'Books'][Math.floor(Math.random() * 4)],
-        value: Math.round(Math.random() * 1000),
-        price: parseFloat((Math.random() * 100 + 10).toFixed(2)),
-        inStock: Math.random() > 0.3 ? 'Yes' : 'No',
-        date: new Date(2023, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0]
+        category: category,
+        region: region,
+        year: year,
+        value: value,
+        sales: sales,
+        price: parseFloat((baseValue / 10 + Math.random() * 20).toFixed(2)),
+        inStock: Math.random() > 0.2 ? 'Yes' : 'No',
+        rating: Math.min(5, Math.max(1, Math.round(3 + (Math.random() * 4 - 2)) + (region === 'West' ? 0.5 : 0))),
+        date: new Date(year, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0]
       };
       
       // Verify the product object has all expected fields
-      const requiredFields = ['id', 'name', 'category', 'value', 'price', 'inStock', 'date'];
+      const requiredFields = ['id', 'name', 'category', 'region', 'year', 'value', 'sales', 'price', 'inStock', 'rating', 'date'];
       const missingFields = requiredFields.filter(field => product[field] === undefined);
       
       if (missingFields.length > 0) {
@@ -181,11 +214,12 @@ export const createSampleDataset = () => {
     
     console.log(`Generated ${data.length} rows of sample data`);
     
-    // Generate a unique ID for the dataset
-    const randomId = Math.random().toString(36).substring(2, 9);
+    // Generate a unique ID for the dataset with a timestamp to ensure uniqueness
+    const timestamp = Date.now();
+    const randomId = `ds-${timestamp}-${Math.random().toString(36).substring(2, 7)}`;
     
     // Define column names exactly matching the object properties
-    const columns = ['id', 'name', 'category', 'value', 'price', 'inStock', 'date'];
+    const columns = ['id', 'name', 'category', 'region', 'year', 'value', 'sales', 'price', 'inStock', 'rating', 'date'];
     
     // Create dataString for compatibility with DataPreview component
     const dataString = JSON.stringify(data);

@@ -267,36 +267,22 @@ export const generateAnalysis = async (data, columns, agentType, options = {}) =
   }
   
   try {
-    let messages;
+    // Transform data for context window
+    const dataContext = transformDataForContext(data, columns);
     
-    // Check if custom messages are provided (used for report processing)
-    if (options.customMessages) {
-      console.log('Using custom messages for AI request');
-      messages = options.customMessages;
-    } else {
-      // Standard data analysis flow
-      // Transform data for context window
-      const dataContext = transformDataForContext(data, columns);
-      
-      // Create appropriate system prompt based on agent type
-      const systemPrompt = getSystemPromptForAgentType(agentType);
-      
-      // Create standard messages
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: dataContext }
-      ];
-    }
+    // Create appropriate system prompt based on agent type
+    const systemPrompt = getSystemPromptForAgentType(agentType);
     
     // Set up API parameters
     const params = {
       model: options.model || 'gpt-4-turbo',
-      messages: messages,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: dataContext }
+      ],
       temperature: options.temperature || 0.2,
       max_tokens: options.maxTokens || 4000
     };
-    
-    console.log('Making OpenAI request with model:', params.model);
     
     // Make API request
     const response = await openaiClient.post('/chat/completions', params);
