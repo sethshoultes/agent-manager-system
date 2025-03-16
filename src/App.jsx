@@ -169,11 +169,36 @@ function AppContent() {
   // Initialize all stores
   const { isLoading: dataLoading, counts } = useInitialize();
   
-  // Enable offline mode by default if not set
+  // Check for server connection and set appropriate mode
   React.useEffect(() => {
+    const checkServerConnection = async () => {
+      try {
+        // Try to connect to API server
+        const response = await fetch('http://localhost:3001/api/health', { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 3000
+        });
+        
+        if (response.ok) {
+          // Server is available, set to online mode
+          localStorage.setItem('offline_mode', 'false');
+          console.log('Online mode enabled - connected to server');
+        } else {
+          // Server is unavailable, fall back to offline mode
+          localStorage.setItem('offline_mode', 'true');
+          console.log('Offline mode enabled - server unavailable');
+        }
+      } catch (error) {
+        // Error connecting to server, enable offline mode
+        localStorage.setItem('offline_mode', 'true');
+        console.log('Offline mode enabled - server connection error:', error);
+      }
+    };
+    
+    // If mode isn't set yet, check server connection
     if (localStorage.getItem('offline_mode') === null) {
-      localStorage.setItem('offline_mode', 'true');
-      console.log('Offline mode enabled by default');
+      checkServerConnection();
     }
   }, []);
   
