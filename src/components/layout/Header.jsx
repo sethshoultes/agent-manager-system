@@ -7,15 +7,6 @@ const Header = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Determine active menu item
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
-  
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-  
   return (
     <header className="app-header">
       <div className="container mx-auto flex justify-between items-center">
@@ -24,51 +15,6 @@ const Header = () => {
             <h1>Agent Manager</h1>
           </Link>
         </div>
-        
-        <nav className="header-nav hidden md:block">
-          <ul className="nav-list">
-            <li className="nav-item">
-              <Link 
-                to="/" 
-                className={`nav-link ${isActive('/') ? 'active' : ''}`}
-              >
-                Dashboard
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                to="/agents" 
-                className={`nav-link ${isActive('/agents') ? 'active' : ''}`}
-              >
-                Agents
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                to="/data" 
-                className={`nav-link ${isActive('/data') ? 'active' : ''}`}
-              >
-                Data
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                to="/reports" 
-                className={`nav-link ${isActive('/reports') ? 'active' : ''}`}
-              >
-                Reports
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link 
-                to="/settings" 
-                className={`nav-link ${isActive('/settings') ? 'active' : ''}`}
-              >
-                Settings
-              </Link>
-            </li>
-          </ul>
-        </nav>
         
         <div className="flex items-center">
           {/* Theme toggle button */}
@@ -91,37 +37,7 @@ const Header = () => {
               </svg>
             )}
           </button>
-          
-          {/* Mobile menu button */}
-          <button 
-            onClick={toggleMobileMenu}
-            className="mobile-menu-btn ml-4 md:hidden"
-            aria-label="Menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
         </div>
-      </div>
-      
-      {/* Mobile navigation */}
-      <div className={`mobile-menu md:hidden px-2 pt-2 pb-4 ${mobileMenuOpen ? 'block' : 'hidden'}`}>
-        <Link to="/" className="mobile-menu-item">
-          Dashboard
-        </Link>
-        <Link to="/agents" className="mobile-menu-item">
-          Agents
-        </Link>
-        <Link to="/data" className="mobile-menu-item">
-          Data
-        </Link>
-        <Link to="/reports" className="mobile-menu-item">
-          Reports
-        </Link>
-        <Link to="/settings" className="mobile-menu-item">
-          Settings
-        </Link>
       </div>
     </header>
   );

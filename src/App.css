@@ -180,16 +180,16 @@ body {
 }
 
 .sidebar-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .sidebar-heading {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-medium);
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-color);
 }
@@ -199,7 +199,7 @@ body {
 }
 
 .menu-item {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .menu-item a {
@@ -207,7 +207,7 @@ body {
   align-items: center;
   color: var(--text-dark);
   text-decoration: none;
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 1rem;
   border-radius: var(--border-radius);
   transition: all var(--transition-speed);
 }
@@ -226,7 +226,7 @@ body {
 .menu-icon {
   width: 1.25rem;
   height: 1.25rem;
-  margin-right: 0.75rem;
+  margin-right: 0.875rem;
   flex-shrink: 0;
 }
 
