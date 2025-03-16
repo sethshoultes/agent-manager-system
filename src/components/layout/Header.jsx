@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import { ConnectionContext } from './Layout';
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isOffline, isServerAvailable, toggleOfflineMode } = useContext(ConnectionContext);
+  
+  // Function to handle toggle click with confirmation
+  const handleConnectionToggle = async () => {
+    if (isOffline && !isServerAvailable) {
+      alert('Cannot switch to online mode. Server is not available.');
+      return;
+    }
+    toggleOfflineMode();
+  };
   
   return (
     <header className="app-header">
@@ -16,11 +25,62 @@ const Header = () => {
           </Link>
         </div>
         
-        <div className="flex items-center">
+        <div className="flex items-center space-x-3">
+          {/* Connection status button */}
+          <div className="connection-status flex items-center">
+            <button
+              onClick={handleConnectionToggle}
+              className={`connection-toggle-btn relative group ${isOffline ? 'text-yellow-500' : 'text-green-500'}`}
+              aria-label={isOffline ? 'Switch to Online Mode' : 'Switch to Offline Mode'}
+              title={isOffline ? 'Currently Offline' : 'Currently Online'}
+            >
+              <svg 
+                className="w-6 h-6" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth="2" 
+                  d={isOffline 
+                    ? "M13 10V3L4 14h7v7l9-11h-7z" // Lightning bolt with slash (offline)
+                    : "M13 10V3L4 14h7v7l9-11h-7z"  // Lightning bolt (online)
+                  } 
+                />
+                {isOffline && (
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2"
+                    stroke="currentColor"
+                    d="M18 6L6 18"
+                  />
+                )}
+              </svg>
+              
+              {/* Tooltip */}
+              <span className="absolute invisible group-hover:visible bg-gray-800 text-white text-xs rounded py-1 px-2 -bottom-8 right-0 whitespace-nowrap">
+                {isOffline 
+                  ? isServerAvailable 
+                    ? 'Click to go online' 
+                    : 'Server unavailable' 
+                  : 'Click to go offline'
+                }
+              </span>
+            </button>
+            
+            {/* Status indicator text - small screens only show icon */}
+            <span className="hidden sm:inline-block ml-1.5 text-sm font-medium">
+              {isOffline ? 'Offline' : 'Online'}
+            </span>
+          </div>
+          
           {/* Theme toggle button */}
           <button
             onClick={toggleTheme}
-            className="theme-toggle-btn"
+            className="theme-toggle-btn relative group"
             aria-label="Toggle dark mode"
           >
             {theme === 'dark' ? (
@@ -36,6 +96,11 @@ const Header = () => {
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
               </svg>
             )}
+            
+            {/* Tooltip */}
+            <span className="absolute invisible group-hover:visible bg-gray-800 text-white text-xs rounded py-1 px-2 -bottom-8 right-0 whitespace-nowrap">
+              {theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            </span>
           </button>
         </div>
       </div>

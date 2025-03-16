@@ -108,7 +108,7 @@ body {
 }
 
 /* Mobile menu */
-.theme-toggle-btn {
+.theme-toggle-btn, .connection-toggle-btn {
   background: none;
   border: none;
   color: var(--text-light);
@@ -118,11 +118,16 @@ body {
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  transition: background-color var(--transition-speed);
+  transition: all var(--transition-speed);
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover, .connection-toggle-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.connection-status {
+  position: relative;
 }
 
 .mobile-menu-btn {

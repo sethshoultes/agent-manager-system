@@ -1,7 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, createContext } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import ErrorBoundary from '../shared/ErrorBoundary';
+
+// Create context for connection status
+export const ConnectionContext = createContext({
+  isOffline: false,
+  isServerAvailable: false,
+  toggleOfflineMode: () => {},
+  checkServerAvailability: () => {}
+});
 
 const Layout = ({ children }) => {
   const [isOffline, setIsOffline] = useState(false);
@@ -60,47 +68,31 @@ const Layout = ({ children }) => {
     return () => window.removeEventListener('storage', checkOfflineMode);
   }, []);
   
+  // Context value with connection state and functions
+  const connectionContextValue = {
+    isOffline,
+    isServerAvailable,
+    toggleOfflineMode,
+    checkServerAvailability
+  };
+  
   return (
-    <div className="app-layout flex flex-col min-h-screen">
-      <Header />
-      
-      {isOffline && (
-        <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 py-2 px-4 text-center font-semibold text-sm border-b border-yellow-200 dark:border-yellow-800">
-          <span>Offline Mode - Data is stored locally. AI features still available.</span>
-          {isServerAvailable && (
-            <button 
-              onClick={toggleOfflineMode}
-              className="underline ml-2 hover:text-yellow-700 dark:hover:text-yellow-100"
-            >
-              Switch to Online Mode
-            </button>
-          )}
+    <ConnectionContext.Provider value={connectionContextValue}>
+      <div className="app-layout flex flex-col min-h-screen">
+        <Header />
+        
+        <div className="app-content">
+          <Sidebar />
+          <main className="main-content">
+            <ErrorBoundary>
+              <div>
+                {children}
+              </div>
+            </ErrorBoundary>
+          </main>
         </div>
-      )}
-      
-      {!isOffline && (
-        <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 py-2 px-4 text-center font-semibold text-sm border-b border-blue-200 dark:border-blue-800">
-          <span>Online Mode - Connected to server.</span>
-          <button 
-            onClick={toggleOfflineMode}
-            className="underline ml-2 hover:text-blue-700 dark:hover:text-blue-100"
-          >
-            Switch to Offline Mode
-          </button>
-        </div>
-      )}
-      
-      <div className="app-content">
-        <Sidebar />
-        <main className="main-content">
-          <ErrorBoundary>
-            <div>
-              {children}
-            </div>
-          </ErrorBoundary>
-        </main>
       </div>
-    </div>
+    </ConnectionContext.Provider>
   );
 };
 
