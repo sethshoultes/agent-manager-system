@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import useAgentStore from '../../stores/agentStore';
 import useDataStore from '../../stores/dataStore';
 import useReportStore from '../../stores/reportStore';
+import { ConnectionContext } from './Layout';
 
 const Sidebar = () => {
   const agentStore = useAgentStore();
   const dataStore = useDataStore();
   const reportStore = useReportStore();
+  const { isOffline, toggleOfflineMode } = useContext(ConnectionContext);
   
   const { agents } = agentStore;
   const { dataSources } = dataStore;
@@ -89,6 +91,40 @@ const Sidebar = () => {
                 </svg>
                 <span>Settings</span>
               </Link>
+            </li>
+            
+            {/* Connection Status Toggle */}
+            <li className="menu-item mt-3">
+              <button 
+                onClick={toggleOfflineMode}
+                className="w-full flex items-center px-3 py-2 rounded-md transition-colors"
+              >
+                <svg 
+                  className={`menu-icon ${isOffline ? 'text-yellow-500' : 'text-green-500'}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M13 10V3L4 14h7v7l9-11h-7z" 
+                  />
+                  {isOffline && (
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth="2"
+                      stroke="currentColor"
+                      d="M18 6L6 18"
+                    />
+                  )}
+                </svg>
+                <span className={`${isOffline ? 'text-yellow-500' : 'text-green-500'} font-medium`}>
+                  {isOffline ? 'Offline Mode' : 'Online Mode'}
+                </span>
+              </button>
             </li>
           </ul>
         </div>
