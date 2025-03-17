@@ -43,9 +43,33 @@ const apiClient = axios.create({
  * @returns {Promise<Object>} - The combined execution results
  */
 export const executeCollaborativeAgent = async (agent, dataSource, collaborators, options = {}) => {
-  if (!agent || !dataSource || !collaborators || collaborators.length === 0) {
-    throw new Error('Collaborative agent, data source, and collaborators are required');
+  console.log('executeCollaborativeAgent called with:', {
+    agent: agent.name,
+    dataSource: dataSource.name,
+    collaboratorsCount: collaborators?.length || 0,
+    collaborators: collaborators?.map(c => c.name) || []
+  });
+
+  // Extra validation with detailed errors
+  if (!agent) {
+    throw new Error('Collaborative agent is required');
   }
+  if (!dataSource) {
+    throw new Error('Data source is required for collaborative execution');
+  }
+  if (!collaborators) {
+    throw new Error('Collaborators array is required but was undefined');
+  }
+  if (collaborators.length === 0) {
+    throw new Error('At least one collaborator agent is required');
+  }
+  
+  // Validate each collaborator has required fields
+  collaborators.forEach((collaborator, index) => {
+    if (!collaborator.id || !collaborator.type) {
+      throw new Error(`Invalid collaborator at index ${index}: missing id or type`);
+    }
+  });
   
   const { onProgress, onLog } = options;
   const executionMode = agent.configuration?.executionMode || 'sequential';
@@ -55,7 +79,9 @@ export const executeCollaborativeAgent = async (agent, dataSource, collaborators
   if (onLog) {
     onLog(`Starting collaborative execution of ${agent.name}`);
     onLog(`Execution mode: ${executionMode}`);
+    onLog(`Synthesize results: ${synthesizeResults ? 'Yes' : 'No'}`);
     onLog(`Collaborators: ${collaborators.map(c => c.name).join(', ')}`);
+    onLog(`Data source: ${dataSource.name} (${dataSource.data?.length || 0} rows)`);
   }
   
   let collaboratorResults = [];
@@ -368,41 +394,63 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
   // Check if this is a collaborative agent with collaborators
   const isCollaborative = agent.type === 'collaborative' || agent.type === 'pipeline';
   if (isCollaborative && !options.isCollaborator) {
+    // Add detailed logging for debugging
+    console.log('Collaborative agent detected:', {
+      name: agent.name,
+      type: agent.type,
+      hasCollaborators: !!agent.collaborators,
+      collaboratorCount: agent.collaborators?.length || 0,
+      collaboratorIds: agent.collaborators || [],
+      optionsCollaborators: options.collaborators?.length || 0
+    });
+
+    if (options.onLog) {
+      options.onLog(`Collaborative agent detected: ${agent.name} (${agent.type})`);
+      options.onLog(`Collaborator IDs: ${agent.collaborators?.join(', ') || 'none'}`);
+      options.onLog(`Options collaborators: ${options.collaborators?.length || 0}`);
+    }
+    
     // This is a main collaborative agent, not a sub-agent
     if (agent.collaborators && agent.collaborators.length > 0) {
       // If we have the collaborators passed in options, use those
-      if (options.collaborators) {
+      if (options.collaborators && options.collaborators.length > 0) {
+        // Log collaborator details
+        if (options.onLog) {
+          options.onLog(`Using ${options.collaborators.length} collaborators provided in options`);
+          options.collaborators.forEach((c, i) => {
+            options.onLog(`Collaborator ${i+1}: ${c.name} (${c.type})`);
+          });
+        }
+        
         // Execute as a collaborative agent
         return executeCollaborativeAgent(agent, dataSource, options.collaborators, options);
       }
       
       // Otherwise, we need to fetch the collaborator agents
-      try {
-        // We cannot use React hooks (useAgentStore) in a non-React component function
-        // Instead, we need to access the store directly or have the React component
-        // pass in the collaborator data
-        
-        if (options.onLog) {
-          options.onLog(`Collaborative agent requires collaborator details from the store`);
-          
-          // Since we can't directly access the store, we'll return a special result
-          // that tells the component it needs to provide collaborators
-          return {
-            success: false,
-            error: 'COLLABORATORS_REQUIRED',
-            message: 'Collaborator details required',
-            agentId: agent.id,
-            collaboratorIds: agent.collaborators,
-            dataSourceId: dataSource.id,
-            requiresCollaborators: true
-          };
-        }
-      } catch (error) {
-        if (options.onLog) {
-          options.onLog(`Error setting up collaborative execution: ${error.message}`);
-          options.onLog('Falling back to standard execution');
-        }
-        // Continue with standard execution
+      console.log('No collaborators provided in options, requesting them from component');
+      
+      if (options.onLog) {
+        options.onLog(`Collaborative agent requires collaborator details from the store`);
+        options.onLog(`Requesting ${agent.collaborators.length} collaborators from component`);
+      }
+      
+      // Since we can't directly access the store, we'll return a special result
+      // that tells the component it needs to provide collaborators
+      return {
+        success: false,
+        error: 'COLLABORATORS_REQUIRED',
+        message: 'Collaborator details required',
+        agentId: agent.id,
+        collaboratorIds: agent.collaborators,
+        dataSourceId: dataSource.id,
+        requiresCollaborators: true
+      };
+    } else {
+      // Log warning for collaborative agent without collaborators
+      console.warn('Collaborative agent has no collaborators defined:', agent);
+      if (options.onLog) {
+        options.onLog(`Warning: Collaborative agent has no collaborators defined`);
+        options.onLog('Falling back to standard execution');
       }
     }
   }

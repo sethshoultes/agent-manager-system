@@ -24,8 +24,21 @@ const CollaborativeExecution = ({
 
   // Calculate overall progress based on individual agent progress
   const calculateOverallProgress = () => {
-    if (!collaborators || collaborators.length === 0) return 0;
+    // Add console logging for debugging
+    console.log('Calculating overall progress:', { 
+      collaboratorsCount: collaborators?.length || 0,
+      collaboratorStatus,
+      synthesisStarted,
+      synthesisProgress,
+      completedCount
+    });
+  
+    if (!collaborators || collaborators.length === 0) {
+      console.warn('No collaborators available for progress calculation');
+      return 0;
+    }
     
+    // Get completed and in-progress agent statuses
     const completedAgents = Object.values(collaboratorStatus).filter(status => status.completed);
     const inProgressAgents = Object.values(collaboratorStatus).filter(status => !status.completed);
     
@@ -42,50 +55,97 @@ const CollaborativeExecution = ({
     const totalPossibleProgress = collaborators.length * 100 + 20; // agents + synthesis
     const currentProgress = completedProgress + inProgressTotal + synthesisContribution;
     
-    return Math.min(100, Math.round((currentProgress / totalPossibleProgress) * 100));
+    const overallProgress = Math.min(100, Math.round((currentProgress / totalPossibleProgress) * 100));
+    
+    console.log('Progress calculation:', {
+      completedAgents: completedAgents.length,
+      inProgressAgents: inProgressAgents.length,
+      completedProgress,
+      inProgressTotal,
+      synthesisContribution,
+      totalPossibleProgress,
+      currentProgress,
+      overallProgress
+    });
+    
+    return overallProgress;
   };
 
+  // Initialize collaborator status when collaborators change
+  useEffect(() => {
+    if (isExecuting && collaborators && collaborators.length > 0) {
+      console.log('Initializing status for collaborators:', collaborators.map(c => c.id));
+      // Set initial status for all collaborators
+      const initialStatus = {};
+      collaborators.forEach(collaborator => {
+        initialStatus[collaborator.id] = {
+          progress: 0,
+          stage: 'Waiting to start',
+          completed: false
+        };
+      });
+      setCollaboratorStatus(initialStatus);
+    }
+  }, [isExecuting, collaborators]);
+  
   // Update collaborator status when execution progress changes
   useEffect(() => {
     if (!isExecuting) return;
     
+    console.log('Execution progress update:', executionProgress);
+    
     // Update status for the collaborator that changed
-    if (executionProgress.agentId && executionProgress.progress) {
+    if (executionProgress.agentId && typeof executionProgress.progress === 'number') {
+      console.log(`Updating status for agent ${executionProgress.agentId}: ${executionProgress.progress}%`);
+      
       setCollaboratorStatus(prev => ({
         ...prev,
         [executionProgress.agentId]: {
           progress: executionProgress.progress,
-          stage: executionProgress.stage,
+          stage: executionProgress.stage || 'In progress',
           completed: executionProgress.progress >= 100
         }
       }));
       
       // Check if this completion means we've finished all collaborators
       if (executionProgress.progress >= 100) {
-        const newCompletedCount = completedCount + 1;
-        setCompletedCount(newCompletedCount);
+        console.log(`Agent ${executionProgress.agentId} completed`);
         
-        // Start synthesis when all collaborators are done
-        if (newCompletedCount === collaborators.length && !synthesisStarted) {
-          setSynthesisStarted(true);
-          // Simulate synthesis progress more gradually
-          let progress = 0;
-          const interval = setInterval(() => {
-            progress += 5; // Slower progress
-            setSynthesisProgress(progress);
-            if (progress >= 100) {
-              clearInterval(interval);
-              // Wait a moment before calling onComplete to allow the parent to handle final results
-              setTimeout(() => {
-                console.log('Synthesis complete, calling onComplete callback');
-                if (onComplete) onComplete();
-              }, 1000);
+        // Count completed collaborators
+        setTimeout(() => {
+          setCollaboratorStatus(prev => {
+            const completed = Object.values(prev).filter(status => status.completed).length;
+            console.log(`${completed} out of ${collaborators?.length || 0} collaborators completed`);
+            
+            // Start synthesis when all collaborators are done and we have actual collaborators
+            if (completed === collaborators?.length && collaborators.length > 0 && !synthesisStarted) {
+              console.log('All collaborators completed, starting synthesis phase');
+              setSynthesisStarted(true);
+              
+              // Simulate synthesis progress more gradually
+              let progress = 0;
+              const interval = setInterval(() => {
+                progress += 5; // Slower progress
+                setSynthesisProgress(progress);
+                console.log(`Synthesis progress: ${progress}%`);
+                
+                if (progress >= 100) {
+                  clearInterval(interval);
+                  // Wait a moment before calling onComplete to allow the parent to handle final results
+                  setTimeout(() => {
+                    console.log('Synthesis complete, calling onComplete callback');
+                    if (onComplete) onComplete();
+                  }, 1000);
+                }
+              }, 200);
             }
-          }, 200);
-        }
+            
+            return prev;
+          });
+        }, 100); // Small delay to ensure all state updates are processed
       }
     }
-  }, [executionProgress, isExecuting, collaborators.length, completedCount, onComplete]);
+  }, [executionProgress, isExecuting, collaborators, synthesisStarted, onComplete]);
 
   return (
     <div className="collaborative-execution">
