@@ -13,6 +13,9 @@
  * @param {string} options.provider - Provider to use ('openai' or 'openrouter')
  * @param {string} options.model - Model to use for this execution
  * @param {boolean} options.forceOffline - Force offline mode even if online is available
+ * @param {Array} options.collaborators - List of collaborator agents for collaborative execution
+ * @param {string} options.executionMode - How to execute collaborators ('sequential' or 'parallel')
+ * @param {boolean} options.synthesizeResults - Whether to combine results from collaborators
  * @returns {Promise<Object>} - The execution results
  */
 
@@ -31,9 +34,367 @@ const apiClient = axios.create({
   }
 });
 
+/**
+ * Executes a collaborative agent by coordinating multiple sub-agents
+ * @param {Object} agent - The collaborative agent to execute
+ * @param {Object} dataSource - The data source to analyze
+ * @param {Array} collaborators - List of collaborator agents
+ * @param {Object} options - Other execution options
+ * @returns {Promise<Object>} - The combined execution results
+ */
+export const executeCollaborativeAgent = async (agent, dataSource, collaborators, options = {}) => {
+  if (!agent || !dataSource || !collaborators || collaborators.length === 0) {
+    throw new Error('Collaborative agent, data source, and collaborators are required');
+  }
+  
+  const { onProgress, onLog } = options;
+  const executionMode = agent.configuration?.executionMode || 'sequential';
+  const synthesizeResults = agent.configuration?.synthesizeResults !== false;
+  
+  // Log start of collaborative execution
+  if (onLog) {
+    onLog(`Starting collaborative execution of ${agent.name}`);
+    onLog(`Execution mode: ${executionMode}`);
+    onLog(`Collaborators: ${collaborators.map(c => c.name).join(', ')}`);
+  }
+  
+  let collaboratorResults = [];
+  
+  // Execute collaborators based on execution mode
+  if (executionMode === 'parallel') {
+    // Execute all collaborators in parallel
+    if (onLog) onLog('Executing all collaborator agents in parallel');
+    
+    try {
+      // Map each collaborator to an execution promise
+      const executionPromises = collaborators.map(collaborator => {
+        // Create a progress handler that includes the agent ID
+        const progressHandler = progressData => {
+          if (onProgress) {
+            onProgress({
+              ...progressData,
+              agentId: collaborator.id, // Include the agent ID for tracking
+              collaborativeExecution: true
+            });
+          }
+        };
+        
+        // Create a log handler that prefixes messages with agent name
+        const logHandler = message => {
+          if (onLog) {
+            onLog(`[${collaborator.name}] ${message}`);
+          }
+        };
+        
+        // Execute the collaborator with the same data source
+        return executeAgent(collaborator, dataSource, {
+          ...options,
+          onProgress: progressHandler,
+          onLog: logHandler,
+          isCollaborator: true
+        });
+      });
+      
+      // Wait for all collaborators to complete
+      collaboratorResults = await Promise.all(executionPromises);
+      
+    } catch (error) {
+      if (onLog) onLog(`Error executing collaborators in parallel: ${error.message}`);
+      throw error;
+    }
+  } else {
+    // Sequential execution - execute collaborators one at a time
+    if (onLog) onLog('Executing collaborator agents sequentially');
+    
+    try {
+      for (let i = 0; i < collaborators.length; i++) {
+        const collaborator = collaborators[i];
+        
+        if (onLog) onLog(`Executing collaborator ${i+1}/${collaborators.length}: ${collaborator.name}`);
+        
+        // Create a progress handler that includes the agent ID
+        const progressHandler = progressData => {
+          if (onProgress) {
+            onProgress({
+              ...progressData,
+              agentId: collaborator.id,
+              collaborativeExecution: true
+            });
+          }
+        };
+        
+        // Create a log handler that prefixes messages with agent name
+        const logHandler = message => {
+          if (onLog) {
+            onLog(`[${collaborator.name}] ${message}`);
+          }
+        };
+        
+        // Execute the collaborator
+        const result = await executeAgent(collaborator, dataSource, {
+          ...options,
+          onProgress: progressHandler,
+          onLog: logHandler,
+          isCollaborator: true
+        });
+        
+        collaboratorResults.push(result);
+      }
+    } catch (error) {
+      if (onLog) onLog(`Error executing collaborators sequentially: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  // Synthesize results if enabled
+  if (synthesizeResults) {
+    if (onLog) onLog('Synthesizing results from all collaborators');
+    
+    try {
+      const synthesizedResult = await synthesizeCollaboratorResults(
+        agent, 
+        collaboratorResults, 
+        options
+      );
+      
+      return {
+        ...synthesizedResult,
+        collaboratorResults,
+        executedAt: new Date().toISOString(),
+        executionMethod: 'collaborative'
+      };
+    } catch (error) {
+      if (onLog) onLog(`Error synthesizing results: ${error.message}`);
+      
+      // Fall back to simple result combination
+      const combinedResult = combineCollaboratorResults(collaboratorResults);
+      return {
+        ...combinedResult,
+        collaboratorResults,
+        executedAt: new Date().toISOString(),
+        executionMethod: 'collaborative',
+        synthesisError: error.message
+      };
+    }
+  } else {
+    // Just return the raw collaborator results
+    if (onLog) onLog('Returning raw collaborator results (no synthesis)');
+    
+    return {
+      success: true,
+      agentId: agent.id,
+      dataSourceId: dataSource.id,
+      summary: `Results from ${collaborators.length} collaborator agents`,
+      insights: collaboratorResults.flatMap(r => r.insights || []).slice(0, 10),
+      visualizations: collaboratorResults.flatMap(r => r.visualizations || []),
+      collaboratorResults,
+      executedAt: new Date().toISOString(),
+      executionMethod: 'collaborative'
+    };
+  }
+};
+
+/**
+ * Combines results from multiple collaborator agents without using AI
+ * @param {Array} collaboratorResults - Results from each collaborator
+ * @returns {Object} - Combined results
+ */
+const combineCollaboratorResults = (collaboratorResults) => {
+  if (!collaboratorResults || collaboratorResults.length === 0) {
+    return {
+      success: false,
+      error: 'No collaborator results to combine'
+    };
+  }
+  
+  // Extract all insights from collaborator results
+  const allInsights = collaboratorResults.flatMap(result => result.insights || []);
+  
+  // Combine unique visualizations
+  const allVisualizations = [];
+  const visualizationTitles = new Set();
+  
+  collaboratorResults.forEach(result => {
+    (result.visualizations || []).forEach(viz => {
+      if (!visualizationTitles.has(viz.title)) {
+        visualizationTitles.add(viz.title);
+        allVisualizations.push(viz);
+      }
+    });
+  });
+  
+  // Combine statistics from all results
+  const combinedStatistics = {};
+  collaboratorResults.forEach(result => {
+    if (result.statistics) {
+      Object.entries(result.statistics).forEach(([key, value]) => {
+        combinedStatistics[key] = value;
+      });
+    }
+  });
+  
+  // Create a combined summary 
+  const summaries = collaboratorResults
+    .filter(r => r.summary)
+    .map(r => r.summary);
+    
+  const combinedSummary = summaries.length > 0
+    ? `# Combined Analysis Results\n\n${summaries.join('\n\n')}`
+    : '# Combined Analysis Results\n\nNo summaries available from collaborator agents.';
+  
+  return {
+    success: true,
+    summary: combinedSummary,
+    insights: allInsights,
+    visualizations: allVisualizations,
+    statistics: combinedStatistics
+  };
+};
+
+/**
+ * Synthesizes results from collaborator agents using AI
+ * @param {Object} agent - The collaborative agent
+ * @param {Array} collaboratorResults - Results from each collaborator
+ * @param {Object} options - Execution options
+ * @returns {Promise<Object>} - Synthesized results
+ */
+const synthesizeCollaboratorResults = async (agent, collaboratorResults, options = {}) => {
+  const { provider = 'openai', model, apiKey, onLog } = options;
+  
+  // Choose the appropriate service
+  let service;
+  if (provider === 'openai') {
+    service = openaiService;
+  } else if (provider === 'openrouter') {
+    service = openRouterService;
+  } else {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+  
+  // Set API key
+  const effectiveApiKey = apiKey || 
+    (provider === 'openai' 
+      ? localStorage.getItem('openai_api_key') 
+      : localStorage.getItem('openrouter_api_key'));
+      
+  if (!effectiveApiKey) {
+    throw new Error('API key required for result synthesis');
+  }
+  
+  service.setApiKey(effectiveApiKey);
+  
+  if (onLog) onLog('Using AI to synthesize collaborator results');
+  
+  // Format collaborator results for the synthesis prompt
+  const formattedResults = collaboratorResults.map((result, index) => {
+    return `Agent ${index + 1} (${result.agentId || 'unknown'}) Results:
+Insights: ${(result.insights || []).join('; ')}
+Statistics: ${JSON.stringify(result.statistics || {})}
+Visualizations: ${(result.visualizations || []).map(v => v.title).join(', ')}
+`;
+  }).join('\n\n');
+  
+  // Create synthesis prompt
+  const synthesisPrompt = `
+You are tasked with synthesizing analysis results from multiple AI agents that have analyzed the same dataset.
+Each agent has provided insights, statistics, and visualizations.
+Your job is to create a cohesive, comprehensive report that combines these results,
+eliminates redundancies, highlights complementary insights, and presents a unified view.
+
+Here are the results from each agent:
+
+${formattedResults}
+
+Please synthesize these results into a cohesive report with the following structure:
+1. Executive Summary
+2. Key Findings (highlighting the most important insights)
+3. Statistical Analysis
+4. Recommendations
+
+Format your response as a JSON object with:
+- summary: A markdown-formatted synthesis report
+- insights: An array of the top synthesized insights
+- visualizationRecommendations: Suggestions for which visualizations best represent the combined findings
+`;
+
+  // Request synthesis from AI service
+  const customMessages = [
+    { role: 'system', content: 'You are an expert data analyst tasked with synthesizing results from multiple analyses.' },
+    { role: 'user', content: synthesisPrompt }
+  ];
+  
+  // Generate synthesis using AI
+  try {
+    const synthesis = await service.generateAnalysis(
+      [], // No raw data needed for synthesis
+      [], // No columns needed for synthesis
+      'summarizer', // Use summarizer agent type
+      { 
+        model: model || (provider === 'openai' ? 'gpt-4-turbo' : 'anthropic/claude-3-haiku'),
+        customMessages
+      }
+    );
+    
+    if (!synthesis.success) {
+      throw new Error(synthesis.error || 'Failed to synthesize results');
+    }
+    
+    // Extract visualizations from all collaborator results
+    const allVisualizations = collaboratorResults.flatMap(r => r.visualizations || []);
+    
+    // Return synthesized results combined with visualizations from collaborators
+    return {
+      success: true,
+      summary: synthesis.result.summary || 'No synthesis summary available',
+      insights: synthesis.result.insights || [],
+      visualizations: allVisualizations,
+      statistics: collaboratorResults.reduce((stats, r) => ({...stats, ...(r.statistics || {})}), {}),
+      synthesisMetadata: {
+        provider,
+        model: synthesis.model
+      }
+    };
+  } catch (error) {
+    if (onLog) onLog(`Error during AI synthesis: ${error.message}`);
+    throw error;
+  }
+};
+
 export const executeAgent = async (agent, dataSource, options = {}) => {
   if (!agent || !dataSource) {
     throw new Error('Agent and data source are required');
+  }
+  
+  // Check if this is a collaborative agent with collaborators
+  const isCollaborative = agent.type === 'collaborative' || agent.type === 'pipeline';
+  if (isCollaborative && !options.isCollaborator) {
+    // This is a main collaborative agent, not a sub-agent
+    if (agent.collaborators && agent.collaborators.length > 0) {
+      // Fetch collaborator agents
+      try {
+        // Load the agent store
+        const { default: useAgentStore } = await import('../stores/agentStore');
+        const agentStore = useAgentStore();
+        
+        // Get full collaborator agent objects
+        const collaborators = agent.collaborators.map(collaboratorId => {
+          const collaborator = agentStore.agents.find(a => a.id === collaboratorId);
+          if (!collaborator) {
+            throw new Error(`Collaborator agent ${collaboratorId} not found`);
+          }
+          return collaborator;
+        });
+        
+        // Execute as a collaborative agent
+        return executeCollaborativeAgent(agent, dataSource, collaborators, options);
+      } catch (error) {
+        if (options.onLog) {
+          options.onLog(`Error setting up collaborative execution: ${error.message}`);
+          options.onLog('Falling back to standard execution');
+        }
+        // Continue with standard execution
+      }
+    }
   }
 
   const { onProgress, onLog } = options;

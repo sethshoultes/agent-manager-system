@@ -1,5 +1,18 @@
 # Version History
 
+## v0.7.0 - 2025-03-16
+- Added agent collaboration capabilities for comprehensive data analysis
+- Implemented collaborative agent types (Collaborative Analyzer and Analysis Pipeline)
+- Created new components for managing collaborator agents
+- Added support for sequential and parallel execution modes
+- Implemented result synthesis using AI to combine collaborator outputs
+- Enhanced agent card UI to display collaboration information
+- Added collaborative execution progress visualization
+- Integrated OpenRouter API as an alternative to OpenAI
+- Updated UI for online/offline mode toggle in the sidebar
+- Fixed color scheme support in dark mode
+- Simplified header by moving connection status to sidebar
+
 ## v0.6.0 - 2025-03-15
 - Fixed CSS styling conflicts between App.css and Tailwind CSS
 - Improved sidebar design with icons and better visual hierarchy
