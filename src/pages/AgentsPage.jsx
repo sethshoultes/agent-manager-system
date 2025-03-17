@@ -3,6 +3,7 @@ import Layout from '../components/layout/Layout';
 import useDataStore from '../stores/dataStore';
 import AgentList from '../components/agents/AgentList';
 import ExecutionProgress from '../components/agents/ExecutionProgress';
+import CollaborativeExecution from '../components/agents/CollaborativeExecution';
 import Modal from '../components/shared/Modal';
 import Button from '../components/shared/Button';
 import { executeAgent } from '../services/agentService';
@@ -72,6 +73,8 @@ const AgentsPage = () => {
   const [selectedDataSource, setSelectedDataSource] = useState(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState(null);
+  const [isCollaborative, setIsCollaborative] = useState(false);
+  const [collaborators, setCollaborators] = useState([]);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   
@@ -138,10 +141,15 @@ const AgentsPage = () => {
     setError(null);
     setShowExecuteModal(true);
     
+    // Check if this is a collaborative agent
+    const isCollaborativeAgent = agent.type === 'collaborative' || agent.type === 'pipeline';
+    setIsCollaborative(isCollaborativeAgent);
+    
     try {
       console.log('Starting execution with:', {
         agent: agent.name, 
         dataSource: dataSource.name,
+        isCollaborative: isCollaborativeAgent,
         options
       });
       
@@ -162,6 +170,24 @@ const AgentsPage = () => {
         stage: 'Starting',
         logs: ['Initiating agent execution...']
       });
+      
+      // If this is a collaborative agent with collaborators, fetch full collaborator objects
+      if (isCollaborativeAgent && agent.collaborators && agent.collaborators.length > 0) {
+        // Find collaborator agents from the agent store
+        const collaboratorAgents = agent.collaborators
+          .map(collaboratorId => agents.find(a => a.id === collaboratorId))
+          .filter(Boolean); // Remove any undefined agents
+          
+        if (collaboratorAgents.length === 0) {
+          throw new Error('No valid collaborator agents found');
+        }
+        
+        setCollaborators(collaboratorAgents);
+        setExecutionProgress(prev => ({
+          ...prev,
+          logs: [...prev.logs, `Found ${collaboratorAgents.length} collaborator agents`]
+        }));
+      }
       
       // Progress tracking callbacks
       const onProgress = (progress) => {
@@ -188,13 +214,67 @@ const AgentsPage = () => {
           onProgress,
           onLog,
           useOpenAI: options.useOpenAI,
-          openAIKey: options.openAIKey,
+          apiKey: options.apiKey, // use apiKey instead of openAIKey
           model: options.model,
-          temperature: options.temperature
+          temperature: options.temperature,
+          provider: options.provider,
+          // Add collaborator information if this is a collaborative agent
+          collaborators: isCollaborativeAgent ? collaborators : undefined,
+          executionMode: agent.configuration?.executionMode,
+          synthesizeResults: agent.configuration?.synthesizeResults
         }
       );
       
       console.log('Agent execution completed:', results);
+      
+      // Check if this is a special response requesting collaborators
+      if (results.error === 'COLLABORATORS_REQUIRED') {
+        setExecutionProgress(prev => ({
+          ...prev,
+          logs: [
+            ...prev.logs,
+            'Collaborative agent requires collaborator details',
+            'Preparing collaborator agents...'
+          ]
+        }));
+        
+        // Get the required collaborator agents from the store
+        const requiredCollaborators = results.collaboratorIds
+          .map(id => agents.find(a => a.id === id))
+          .filter(Boolean);
+          
+        if (requiredCollaborators.length === 0) {
+          throw new Error('No valid collaborator agents found');
+        }
+        
+        // Set collaborators and retry execution with them
+        setCollaborators(requiredCollaborators);
+        
+        // Log collaborator information
+        setExecutionProgress(prev => ({
+          ...prev,
+          logs: [
+            ...prev.logs,
+            `Found ${requiredCollaborators.length} collaborator agents:`,
+            ...requiredCollaborators.map(c => `- ${c.name} (${c.type})`)
+          ]
+        }));
+        
+        // Retry execution with collaborators
+        const retryResults = await executeAgent(
+          agent,
+          dataSource,
+          {
+            ...options,
+            onProgress,
+            onLog,
+            collaborators: requiredCollaborators
+          }
+        );
+        
+        // Replace results with retry results
+        Object.assign(results, retryResults);
+      }
       
       // Update progress to completed
       setExecutionProgress(prev => ({
@@ -594,7 +674,18 @@ const AgentsPage = () => {
             ) : (
               // Execution progress display
               <>
-                <ExecutionProgress progress={executionProgress} />
+                {isCollaborative ? (
+                  <CollaborativeExecution 
+                    collaborativeAgent={selectedAgent}
+                    collaborators={collaborators}
+                    executionProgress={executionProgress}
+                    logMessages={executionProgress.logs}
+                    isExecuting={isExecuting}
+                    dataSource={selectedDataSource}
+                  />
+                ) : (
+                  <ExecutionProgress progress={executionProgress} />
+                )}
                 
                 {error && (
                   <div className="error-message">

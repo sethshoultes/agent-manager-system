@@ -370,23 +370,33 @@ export const executeAgent = async (agent, dataSource, options = {}) => {
   if (isCollaborative && !options.isCollaborator) {
     // This is a main collaborative agent, not a sub-agent
     if (agent.collaborators && agent.collaborators.length > 0) {
-      // Fetch collaborator agents
-      try {
-        // Load the agent store
-        const { default: useAgentStore } = await import('../stores/agentStore');
-        const agentStore = useAgentStore();
-        
-        // Get full collaborator agent objects
-        const collaborators = agent.collaborators.map(collaboratorId => {
-          const collaborator = agentStore.agents.find(a => a.id === collaboratorId);
-          if (!collaborator) {
-            throw new Error(`Collaborator agent ${collaboratorId} not found`);
-          }
-          return collaborator;
-        });
-        
+      // If we have the collaborators passed in options, use those
+      if (options.collaborators) {
         // Execute as a collaborative agent
-        return executeCollaborativeAgent(agent, dataSource, collaborators, options);
+        return executeCollaborativeAgent(agent, dataSource, options.collaborators, options);
+      }
+      
+      // Otherwise, we need to fetch the collaborator agents
+      try {
+        // We cannot use React hooks (useAgentStore) in a non-React component function
+        // Instead, we need to access the store directly or have the React component
+        // pass in the collaborator data
+        
+        if (options.onLog) {
+          options.onLog(`Collaborative agent requires collaborator details from the store`);
+          
+          // Since we can't directly access the store, we'll return a special result
+          // that tells the component it needs to provide collaborators
+          return {
+            success: false,
+            error: 'COLLABORATORS_REQUIRED',
+            message: 'Collaborator details required',
+            agentId: agent.id,
+            collaboratorIds: agent.collaborators,
+            dataSourceId: dataSource.id,
+            requiresCollaborators: true
+          };
+        }
       } catch (error) {
         if (options.onLog) {
           options.onLog(`Error setting up collaborative execution: ${error.message}`);
