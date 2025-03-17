@@ -68,17 +68,20 @@ const CollaborativeExecution = ({
         // Start synthesis when all collaborators are done
         if (newCompletedCount === collaborators.length && !synthesisStarted) {
           setSynthesisStarted(true);
-          // Simulate synthesis progress
+          // Simulate synthesis progress more gradually
           let progress = 0;
           const interval = setInterval(() => {
-            progress += 10;
+            progress += 5; // Slower progress
             setSynthesisProgress(progress);
             if (progress >= 100) {
               clearInterval(interval);
-              // Call onComplete callback when synthesis is done
-              if (onComplete) onComplete();
+              // Wait a moment before calling onComplete to allow the parent to handle final results
+              setTimeout(() => {
+                console.log('Synthesis complete, calling onComplete callback');
+                if (onComplete) onComplete();
+              }, 1000);
             }
-          }, 500);
+          }, 200);
         }
       }
     }

@@ -51,7 +51,10 @@ const AgentsPage = () => {
   
   // Get data sources directly from the store for better reactivity
   const dataSources = dataStore.dataSources || [];
+  // Get agents directly from the store for better reactivity
+  const allAgents = agentStore.agents || [];
   console.log("AgentsPage render - Data sources:", { count: dataSources.length, sources: dataSources });
+  console.log("AgentsPage render - Agents:", { count: allAgents.length, agents: allAgents });
   
   const { addReport } = reportStore;
   const { 
@@ -65,7 +68,9 @@ const AgentsPage = () => {
   const [executionProgress, setExecutionProgress] = useState({
     progress: 0,
     stage: 'Not started',
-    logs: []
+    logs: [],
+    agentId: null,
+    collaborativeExecution: false
   });
   
   const [showExecuteModal, setShowExecuteModal] = useState(false);
@@ -86,7 +91,9 @@ const AgentsPage = () => {
         setExecutionProgress({
           progress: 0,
           stage: 'Not started',
-          logs: []
+          logs: [],
+          agentId: null,
+          collaborativeExecution: false
         });
       }
     };
@@ -168,7 +175,9 @@ const AgentsPage = () => {
       setExecutionProgress({
         progress: 0,
         stage: 'Starting',
-        logs: ['Initiating agent execution...']
+        logs: ['Initiating agent execution...'],
+        agentId: agent.id, // Set the main agent's ID for initial progress
+        collaborativeExecution: isCollaborativeAgent
       });
       
       // If this is a collaborative agent with collaborators, fetch full collaborator objects
@@ -194,7 +203,10 @@ const AgentsPage = () => {
         setExecutionProgress(prev => ({
           progress: progress.progress || prev.progress,
           stage: progress.stage || prev.stage,
-          logs: prev.logs
+          logs: prev.logs,
+          // Pass along agentId for collaborative execution
+          agentId: progress.agentId,
+          collaborativeExecution: progress.collaborativeExecution
         }));
       };
       
@@ -202,7 +214,10 @@ const AgentsPage = () => {
         setExecutionProgress(prev => ({
           progress: prev.progress,
           stage: prev.stage,
-          logs: [...prev.logs, message]
+          logs: [...prev.logs, message],
+          // Preserve other properties
+          agentId: prev.agentId,
+          collaborativeExecution: prev.collaborativeExecution
         }));
       };
       
@@ -284,7 +299,10 @@ const AgentsPage = () => {
           ...prev.logs,
           'Analysis complete',
           `Execution method: ${results.executionMethod || 'standard'}`
-        ]
+        ],
+        // Preserve the agent ID and collaborative status
+        agentId: prev.agentId,
+        collaborativeExecution: prev.collaborativeExecution
       }));
       
       // Check if a report is already included in the results
@@ -682,6 +700,10 @@ const AgentsPage = () => {
                     logMessages={executionProgress.logs}
                     isExecuting={isExecuting}
                     dataSource={selectedDataSource}
+                    onComplete={() => {
+                      console.log('Collaborative execution completed');
+                      // Don't close the modal yet - we'll let the normal flow handle this
+                    }}
                   />
                 ) : (
                   <ExecutionProgress progress={executionProgress} />
