@@ -20,21 +20,55 @@ const SettingsPage = () => {
   const [openAIStatus, setOpenAIStatus] = useState({ verified: false, message: '' });
   const [openRouterStatus, setOpenRouterStatus] = useState({ verified: false, message: '' });
   
-  // Load settings from localStorage on mount
+  // Load settings from localStorage or settingsStore on mount
   useEffect(() => {
-    const storedOpenAIKey = localStorage.getItem('openai_api_key') || '';
-    const storedOpenRouterKey = localStorage.getItem('openrouter_api_key') || '';
-    const storedDefaultProvider = localStorage.getItem('default_ai_provider') || 'openai';
-    const storedOpenAIModel = localStorage.getItem('openai_model') || 'gpt-4-turbo';
-    const storedOpenRouterModel = localStorage.getItem('openrouter_model') || 'anthropic/claude-3-haiku';
+    // Try to load from the combined settings first
+    const aiSettings = JSON.parse(localStorage.getItem('ai_settings') || '{}');
     
-    setOpenAIKey(storedOpenAIKey);
-    setOpenRouterKey(storedOpenRouterKey);
-    setDefaultProvider(storedDefaultProvider);
-    setModels({
-      openai: storedOpenAIModel,
-      openrouter: storedOpenRouterModel
-    });
+    // If we have the combined settings, use those
+    if (aiSettings && aiSettings.providers) {
+      // OpenAI settings
+      if (aiSettings.providers.openai) {
+        setOpenAIKey(aiSettings.providers.openai.key || '');
+        if (aiSettings.providers.openai.model) {
+          setModels(prev => ({
+            ...prev,
+            openai: aiSettings.providers.openai.model
+          }));
+        }
+      }
+      
+      // OpenRouter settings
+      if (aiSettings.providers.openrouter) {
+        setOpenRouterKey(aiSettings.providers.openrouter.key || '');
+        if (aiSettings.providers.openrouter.model) {
+          setModels(prev => ({
+            ...prev,
+            openrouter: aiSettings.providers.openrouter.model
+          }));
+        }
+      }
+      
+      // Default provider
+      if (aiSettings.defaultProvider) {
+        setDefaultProvider(aiSettings.defaultProvider);
+      }
+    } else {
+      // Fall back to individual settings
+      const storedOpenAIKey = localStorage.getItem('openai_api_key') || '';
+      const storedOpenRouterKey = localStorage.getItem('openrouter_api_key') || '';
+      const storedDefaultProvider = localStorage.getItem('default_ai_provider') || 'openai';
+      const storedOpenAIModel = localStorage.getItem('openai_model') || 'gpt-4-turbo';
+      const storedOpenRouterModel = localStorage.getItem('openrouter_model') || 'anthropic/claude-3-haiku';
+      
+      setOpenAIKey(storedOpenAIKey);
+      setOpenRouterKey(storedOpenRouterKey);
+      setDefaultProvider(storedDefaultProvider);
+      setModels({
+        openai: storedOpenAIModel,
+        openrouter: storedOpenRouterModel
+      });
+    }
   }, []);
   
   // Handle input changes
@@ -53,6 +87,9 @@ const SettingsPage = () => {
   // Save settings to localStorage
   const saveSettings = () => {
     try {
+      // Delete old AI settings first to prevent conflicts
+      localStorage.removeItem('ai_settings');
+      
       // Store API keys
       localStorage.setItem('openai_api_key', openAIKey);
       localStorage.setItem('openrouter_api_key', openRouterKey);
@@ -64,8 +101,12 @@ const SettingsPage = () => {
       localStorage.setItem('openai_model', models.openai);
       localStorage.setItem('openrouter_model', models.openrouter);
       
+      // Log what we're saving for debugging
+      console.log('Saving OpenAI key:', openAIKey ? 'Key present (length: ' + openAIKey.length + ')' : 'No key');
+      console.log('Saving OpenRouter key:', openRouterKey ? 'Key present (length: ' + openRouterKey.length + ')' : 'No key');
+      
       // Also store in a combined format for easy access
-      localStorage.setItem('ai_settings', JSON.stringify({
+      const settings = {
         providers: {
           openai: {
             key: openAIKey,
@@ -77,7 +118,10 @@ const SettingsPage = () => {
           }
         },
         defaultProvider
-      }));
+      };
+      
+      localStorage.setItem('ai_settings', JSON.stringify(settings));
+      console.log('Saved ai_settings to localStorage:', settings);
       
       setSaveStatus({
         message: 'Settings saved successfully!',
@@ -101,12 +145,18 @@ const SettingsPage = () => {
   // Clear all API keys
   const clearAPIKeys = () => {
     if (window.confirm('Are you sure you want to clear all API keys? This cannot be undone.')) {
+      console.log('Clearing all API keys from localStorage');
       localStorage.removeItem('openai_api_key');
       localStorage.removeItem('openrouter_api_key');
       localStorage.removeItem('ai_settings');
       
       setOpenAIKey('');
       setOpenRouterKey('');
+      
+      console.log('API keys cleared, verifying removal:');
+      console.log('- openai_api_key in localStorage:', !!localStorage.getItem('openai_api_key'));
+      console.log('- openrouter_api_key in localStorage:', !!localStorage.getItem('openrouter_api_key'));
+      console.log('- ai_settings in localStorage:', !!localStorage.getItem('ai_settings'));
       
       setSaveStatus({
         message: 'API keys cleared successfully.',

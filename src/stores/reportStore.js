@@ -289,6 +289,13 @@ const useReportStore = create((set, get) => ({
   
   addReport: async (report) => {
     try {
+      console.log('Report store: Adding new report', {
+        id: report.id,
+        name: report.name || report.title,
+        hasSummary: !!report.summary,
+        insightsCount: (report.insights || []).length
+      });
+      
       // Normalize the report
       const newReport = { 
         ...report,
@@ -299,26 +306,62 @@ const useReportStore = create((set, get) => ({
         visualizations: report.visualizations || []
       };
       
-      // Get current reports and add the new one
-      const updatedReports = [...get().reports, newReport];
+      // Deep clone the current reports to avoid reference issues
+      const currentReports = JSON.parse(JSON.stringify(get().reports || []));
+      
+      // Check if this report already exists (by ID)
+      const existingIndex = currentReports.findIndex(r => r.id === newReport.id);
+      let updatedReports;
+      
+      if (existingIndex >= 0) {
+        // Replace existing report
+        console.log(`Replacing existing report with ID ${newReport.id}`);
+        updatedReports = [...currentReports];
+        updatedReports[existingIndex] = newReport;
+      } else {
+        // Add new report
+        updatedReports = [...currentReports, newReport];
+      }
       
       // Update state
       set({ reports: updatedReports });
+      console.log(`Report store state updated. Total reports: ${updatedReports.length}`);
       
-      // Save to localStorage
-      localStorage.setItem('reports', JSON.stringify(updatedReports));
+      // Save to localStorage with error handling
+      try {
+        const serialized = JSON.stringify(updatedReports);
+        localStorage.setItem('reports', serialized);
+        console.log(`Saved reports to localStorage (${serialized.length} bytes)`);
+      } catch (storageError) {
+        console.error('Failed to save reports to localStorage:', storageError);
+        // Try storing without visualizations if it might be too large
+        if (storageError.name === 'QuotaExceededError') {
+          try {
+            const minimalReports = updatedReports.map(r => ({
+              ...r,
+              visualizations: [],
+              summary: r.summary?.substring(0, 1000) || ''
+            }));
+            localStorage.setItem('reports', JSON.stringify(minimalReports));
+            console.log('Saved minimal reports to localStorage due to quota limitation');
+          } catch (e) {
+            console.error('Even minimal reports failed to save:', e);
+          }
+        }
+      }
       
       // Try to save to API if available
       try {
         await reportService.create(newReport);
+        console.log('Report saved to API successfully');
       } catch (apiError) {
-        console.warn('API unreachable, saved report to local state only');
+        console.warn('API unreachable, saved report to local state only:', apiError.message);
       }
       
       return newReport;
     } catch (error) {
       console.error('Error adding report:', error);
-      return null;
+      throw error; // Rethrow to help with debugging
     }
   },
   

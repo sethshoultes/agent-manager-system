@@ -10,52 +10,71 @@ const ReportsPage = () => {
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   
-  // Load reports from localStorage on mount
+  // Load reports from localStorage on mount and recheck every 3 seconds
   useEffect(() => {
-    try {
-      // Clear localStorage if needed for a fresh start
-      // localStorage.removeItem('reports');
-      
-      const storedReports = localStorage.getItem('reports');
-      console.log('Raw reports from localStorage:', storedReports);
-      
-      if (storedReports) {
-        try {
-          const parsedReports = JSON.parse(storedReports);
-          console.log('Parsed reports:', parsedReports);
-          
-          // Clean the reports array - remove any null, undefined, or malformed entries
-          const cleanedReports = Array.isArray(parsedReports) 
-            ? parsedReports.filter(report => 
-                report && 
-                typeof report === 'object' &&
-                report.id // Must have an ID at minimum
-              )
-            : [];
+    const loadReports = () => {
+      try {
+        // Log localStorage keys for debugging
+        console.log('Available localStorage keys:', Object.keys(localStorage));
+        
+        const storedReports = localStorage.getItem('reports');
+        console.log('Raw reports from localStorage:', storedReports?.substring(0, 100) + '...');
+        
+        if (storedReports) {
+          try {
+            const parsedReports = JSON.parse(storedReports);
+            console.log('Parsed reports count:', Array.isArray(parsedReports) ? parsedReports.length : 'not an array');
             
-          console.log('Cleaned reports:', cleanedReports);
-          
-          // Save the cleaned reports back to localStorage
-          if (cleanedReports.length !== (Array.isArray(parsedReports) ? parsedReports.length : 0)) {
-            localStorage.setItem('reports', JSON.stringify(cleanedReports));
-            console.log('Saved cleaned reports back to localStorage');
+            // Clean the reports array - remove any null, undefined, or malformed entries
+            const cleanedReports = Array.isArray(parsedReports) 
+              ? parsedReports.filter(report => 
+                  report && 
+                  typeof report === 'object' &&
+                  report.id // Must have an ID at minimum
+                )
+              : [];
+              
+            console.log('Cleaned reports count:', cleanedReports.length);
+            console.log('Report IDs:', cleanedReports.map(r => r.id).join(', '));
+            
+            // Save the cleaned reports back to localStorage
+            if (cleanedReports.length !== (Array.isArray(parsedReports) ? parsedReports.length : 0)) {
+              localStorage.setItem('reports', JSON.stringify(cleanedReports));
+              console.log('Saved cleaned reports back to localStorage');
+            }
+            
+            // Only update state if reports have changed
+            if (JSON.stringify(cleanedReports.map(r => r.id)) !== 
+                JSON.stringify(reports.map(r => r.id))) {
+              console.log('Reports changed, updating state');
+              setReports(cleanedReports);
+            }
+          } catch (parseError) {
+            console.error('Failed to parse reports JSON:', parseError);
+            localStorage.removeItem('reports'); // Remove corrupted data
+            setReports([]);
           }
-          
-          setReports(cleanedReports);
-        } catch (parseError) {
-          console.error('Failed to parse reports JSON:', parseError);
-          localStorage.removeItem('reports'); // Remove corrupted data
-          setReports([]);
+        } else {
+          console.log('No reports found in localStorage');
+          if (reports.length > 0) {
+            setReports([]);
+          }
         }
-      } else {
-        console.log('No reports found in localStorage');
+      } catch (err) {
+        console.error('Error loading reports from localStorage:', err);
         setReports([]);
       }
-    } catch (err) {
-      console.error('Error loading reports from localStorage:', err);
-      setReports([]);
-    }
-  }, []);
+    };
+    
+    // Load immediately
+    loadReports();
+    
+    // Set up polling interval to check for new reports
+    const interval = setInterval(loadReports, 3000);
+    
+    // Clean up
+    return () => clearInterval(interval);
+  }, [reports]);
   
   // Create a sample report for testing
   const createSampleReport = () => {

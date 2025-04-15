@@ -23,7 +23,11 @@ export const setApiKey = (apiKey) => {
     return false;
   }
   
+  console.log(`Setting OpenAI API key: ${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`);
   openaiClient.defaults.headers.common['Authorization'] = `Bearer ${apiKey}`;
+  
+  // Test if Authorization header was set
+  console.log('Authorization header set:', !!openaiClient.defaults.headers.common['Authorization']);
   return true;
 };
 
@@ -259,12 +263,21 @@ export const parseResponse = (responseContent) => {
  * @returns {Promise<Object>} - Analysis results
  */
 export const generateAnalysis = async (data, columns, agentType, options = {}) => {
+  // Check if API key is configured
   if (!openaiClient.defaults.headers.common['Authorization']) {
+    console.error('OpenAI API key not configured in headers');
     return {
       success: false,
       error: 'API key not configured. Please set your OpenAI API key.'
     };
   }
+  
+  // Log data for debugging
+  console.log('Generating analysis with OpenAI:');
+  console.log('- Agent type:', agentType);
+  console.log('- Data rows:', data?.length || 0);
+  console.log('- Columns:', columns?.length || 0);
+  console.log('- Model:', options.model || 'gpt-4-turbo');
   
   try {
     let messages;

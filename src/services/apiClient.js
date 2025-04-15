@@ -123,8 +123,9 @@ export const auth = {
   },
   
   isAuthenticated: () => {
-    // Always return false for testing to force offline mode
-    return false;
+    // Check for token in localStorage
+    const token = localStorage.getItem('token');
+    return !!token; // Return true if token exists
   }
 };
 
